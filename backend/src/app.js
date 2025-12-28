@@ -1,5 +1,11 @@
 import express from "express";
 import cors from "cors";
+import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/user.routes.js";
+import rideRoutes from "./routes/ride.routes.js";
+
+
+
 
 const app = express();
 
@@ -16,6 +22,7 @@ app.use(express.json());
 // Parse URL-encoded data
 app.use(express.urlencoded({ extended: true }));
 
+
 /* ===============================
    Base Route (Health Check)
 ================================ */
@@ -30,8 +37,10 @@ app.get("/", (req, res) => {
 /* ===============================
    Future Routes Placeholder
 ================================ */
-// app.use("/api/auth", authRoutes);
-// app.use("/api/rides", rideRoutes);
+
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/rides", rideRoutes);
 
 /* ===============================
    404 Handler
@@ -43,5 +52,6 @@ app.use((req, res) => {
     message: "Route not found",
   });
 });
+
 
 export default app;
