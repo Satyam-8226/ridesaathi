@@ -5,28 +5,38 @@ const rideSchema = new mongoose.Schema(
     driver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: true
     },
 
-    from: {
+    source: {
       type: String,
-      required: true,
+      required: true
     },
 
-    to: {
+    destination: {
       type: String,
-      required: true,
+      required: true
     },
 
     date: {
       type: Date,
-      required: true,
+      required: true
+    },
+
+    totalSeats: {
+      type: Number,
+      required: true
+    },
+
+    status: {
+      type: String,
+      enum: ["OPEN", "FULL", "CANCELLED"],
+      default: "OPEN"
     },
 
     availableSeats: {
       type: Number,
-      required: true,
-      min: 1,
+      required: true
     },
 
     price: {
@@ -34,18 +44,15 @@ const rideSchema = new mongoose.Schema(
       required: true,
     },
 
+
     passengers: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
+        ref: "User"
+      }
+    ]
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const Ride = mongoose.model("Ride", rideSchema);
-
-export default Ride;
+export default mongoose.model("Ride", rideSchema);
