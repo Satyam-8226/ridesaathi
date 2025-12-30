@@ -1,16 +1,23 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import API from "../api/axios";
 import RideCard from "../components/RideCard";
+import { AuthContext } from "../auth/AuthContext";
+import Navbar from "../components/Navbar";
+
 
 const SearchRides = () => {
+  const { user } = useContext(AuthContext); // ✅ FIX
+
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [searched, setSearched] = useState(false); // 🔥 important
+  const [searched, setSearched] = useState(false);
 
   const searchRides = async () => {
+    if (!from || !to) return;
+
     setLoading(true);
     setError("");
     setSearched(true);
@@ -25,9 +32,19 @@ const SearchRides = () => {
     }
   };
 
+
   return (
+    <>
+    <Navbar />
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Search Rides</h1>
+      <h1 className="text-2xl font-bold mb-2">Search Rides</h1>
+
+      {/* ✅ WELCOME MESSAGE */}
+      {user && (
+        <h2 className="text-lg text-gray-600 mb-6">
+          Welcome, {user.name}! Search and join available rides 🚗
+        </h2>
+      )}
 
       {/* Search Box */}
       <div className="flex gap-4 mb-6">
@@ -54,7 +71,7 @@ const SearchRides = () => {
       {loading && <p>Loading...</p>}
       {error && <p className="text-red-500">{error}</p>}
 
-      {/* 🔴 NO RIDES FOUND */}
+      {/* No rides found */}
       {!loading && searched && rides.length === 0 && !error && (
         <p className="text-gray-500 text-center mt-6">
           No rides found for this route 🚫
@@ -68,10 +85,12 @@ const SearchRides = () => {
             key={ride._id}
             ride={ride}
             refresh={searchRides}
+            context="search"
           />
         ))}
       </div>
     </div>
+    </>
   );
 };
 

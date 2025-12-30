@@ -2,21 +2,31 @@ import { useContext, useState } from "react";
 import API from "../api/axios";
 import { AuthContext } from "../auth/AuthContext";
 
-const RideCard = ({ ride, refresh }) => {
+const RideCard = ({ ride, refresh, context = "search" }) => {
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
 
-  const joined =
-    user?.role === "passenger" &&
-    ride.passengers?.includes(user._id);
+  /* ===============================
+     DERIVED STATE
+  ================================ */
+  const isJoined = ride.passengers?.includes(user._id);
+  const isFull = ride.availableSeats === 0;
+  const isCancelled = ride.status === "CANCELLED";
+  const isOpen = ride.status === "OPEN";
+  console.log("MyRides debug → passengers:", ride.passengers);
+  console.log("MyRides debug → user:", user._id);
 
+
+  /* ===============================
+     API ACTIONS
+  ================================ */
   const joinRide = async () => {
     try {
       setLoading(true);
       await API.post(`/rides/${ride._id}/join`);
-      refresh();
+      refresh(); // re-fetch list
     } catch (err) {
-      alert(err.response?.data?.message || "Join failed");
+      alert(err.response?.data?.message || "Failed to join ride");
     } finally {
       setLoading(false);
     }
@@ -28,7 +38,7 @@ const RideCard = ({ ride, refresh }) => {
       await API.post(`/rides/${ride._id}/leave`);
       refresh();
     } catch (err) {
-      alert(err.response?.data?.message || "Leave failed");
+      alert(err.response?.data?.message || "Failed to leave ride");
     } finally {
       setLoading(false);
     }
@@ -40,26 +50,28 @@ const RideCard = ({ ride, refresh }) => {
       await API.post(`/rides/${ride._id}/cancel`);
       refresh();
     } catch (err) {
-      alert(err.response?.data?.message || "Cancel failed");
+      alert(err.response?.data?.message || "Failed to cancel ride");
     } finally {
       setLoading(false);
     }
   };
 
-  const statusColor =
-    ride.status === "OPEN"
-      ? "text-green-600"
-      : ride.status === "FULL"
-      ? "text-yellow-600"
-      : "text-red-600";
+  /* ===============================
+     STATUS COLOR
+  ================================ */
+  const statusColor = {
+    OPEN: "text-green-600",
+    FULL: "text-yellow-600",
+    CANCELLED: "text-red-600",
+  }[ride.status];
 
   return (
-    <div className="border rounded-lg p-4 flex justify-between items-center shadow-sm">
+    <div className="border rounded-lg p-4 shadow-sm flex justify-between items-center">
       {/* LEFT INFO */}
       <div>
-        <p className="font-semibold text-lg">
+        <h3 className="font-semibold text-lg">
           {ride.source} → {ride.destination}
-        </p>
+        </h3>
 
         <p className="text-sm text-gray-600">
           {new Date(ride.date).toDateString()}
@@ -76,37 +88,36 @@ const RideCard = ({ ride, refresh }) => {
 
       {/* ACTION BUTTONS */}
       <div className="flex gap-2">
-        {/* Passenger actions */}
-        {user?.role === "passenger" &&
-          ride.status === "OPEN" &&
-          !joined && (
-            <button
-              onClick={joinRide}
-              disabled={loading}
-              className="bg-green-600 text-white px-4 py-1 rounded hover:bg-green-700 disabled:opacity-50"
-            >
-              Join
-            </button>
-          )}
-
-        {user?.role === "passenger" && joined && (
+        {/* ===== SEARCH PAGE (Passenger) ===== */}
+        {user.role === "passenger" && context === "search" && (
           <button
-            onClick={leaveRide}
-            disabled={loading}
-            className="bg-gray-600 text-white px-4 py-1 rounded hover:bg-gray-700 disabled:opacity-50"
+            onClick={joinRide}
+            disabled={loading || isFull || isCancelled}
+            className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
           >
-            Leave
+            Join Ride
           </button>
         )}
 
-        {/* Driver action */}
-        {user?.role === "driver" && ride.status === "OPEN" && (
+        {/* ===== MY RIDES PAGE (Passenger) ===== */}
+        {user.role === "passenger" && context === "myrides" && isJoined && (
+          <button
+            onClick={leaveRide}
+            disabled={loading}
+            className="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
+          >
+            Leave Ride
+          </button>
+        )}
+
+        {/* ===== DRIVER ===== */}
+        {user.role === "driver" && isOpen && (
           <button
             onClick={cancelRide}
             disabled={loading}
-            className="bg-red-600 text-white px-4 py-1 rounded hover:bg-red-700 disabled:opacity-50"
+            className="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50"
           >
-            Cancel
+            Cancel Ride
           </button>
         )}
       </div>

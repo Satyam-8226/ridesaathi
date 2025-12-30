@@ -79,23 +79,24 @@ export const createRide = async (req, res) => {
    JOIN RIDE (Passenger)
 ================================ */
 
+import mongoose from "mongoose";
+
 export const joinRide = async (req, res) => {
   try {
     const { rideId } = req.params;
-    const userId = req.user.id;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
 
-    // Single atomic operation (prevents race conditions)
     const updatedRide = await Ride.findOneAndUpdate(
       {
         _id: rideId,
         status: "OPEN",
         availableSeats: { $gt: 0 },
+        driver: { $ne: userId },
         passengers: { $ne: userId },
-        driver: { $ne: userId }
       },
       {
-        $push: { passengers: userId },
-        $inc: { availableSeats: -1 }
+        $addToSet: { passengers: userId }, // ✅ FIX
+        $inc: { availableSeats: -1 },
       },
       { new: true }
     );
@@ -103,30 +104,28 @@ export const joinRide = async (req, res) => {
     if (!updatedRide) {
       return res.status(400).json({
         message:
-          "Cannot join ride (ride full, cancelled, already joined, or invalid)"
+          "Cannot join ride (ride full, cancelled, already joined, or invalid)",
       });
     }
 
-    // Auto-mark FULL when seats hit 0
+    // Auto mark FULL
     if (updatedRide.availableSeats === 0) {
-      await Ride.findByIdAndUpdate(rideId, { status: "FULL" });
       updatedRide.status = "FULL";
+      await updatedRide.save();
     }
 
     res.status(200).json({
       message: "Ride joined successfully",
       ride: {
         ...updatedRide.toObject(),
-        passengers: updatedRide.passengers.map(p => p.toString()),
+        passengers: updatedRide.passengers.map((p) => p.toString()),
       },
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 
 
@@ -198,13 +197,15 @@ export const leaveRide = async (req, res) => {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    // Driver cannot leave own ride
     if (ride.driver.toString() === userId) {
       return res.status(400).json({ message: "Driver cannot leave own ride" });
     }
 
-    // Passenger not part of ride
-    if (!ride.passengers.includes(userId)) {
+    const isPassenger = ride.passengers.some(
+      (p) => p.toString() === userId
+    );
+
+    if (!isPassenger) {
       return res.status(400).json({ message: "You have not joined this ride" });
     }
 
@@ -212,12 +213,11 @@ export const leaveRide = async (req, res) => {
       rideId,
       {
         $pull: { passengers: userId },
-        $inc: { availableSeats: 1 }
+        $inc: { availableSeats: 1 },
       },
       { new: true }
     );
 
-    // reopen ride if it was FULL
     if (updatedRide.status === "FULL") {
       updatedRide.status = "OPEN";
       await updatedRide.save();
@@ -227,16 +227,15 @@ export const leaveRide = async (req, res) => {
       message: "Ride left successfully",
       ride: {
         ...updatedRide.toObject(),
-        passengers: updatedRide.passengers.map(p => p.toString()),
+        passengers: updatedRide.passengers.map((p) => p.toString()),
       },
     });
-
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 
 /* ===============================

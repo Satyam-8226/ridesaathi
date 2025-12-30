@@ -9,10 +9,11 @@ const Register = () => {
     name: "",
     email: "",
     password: "",
+    role: "passenger",
     phone: "",
-    role: "passenger"
   });
 
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleChange = (e) => {
@@ -22,12 +23,24 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
-      await API.post("/auth/register", form);
-      navigate("/");
+      const res = await API.post("/auth/register", form);
+
+      // store token
+      localStorage.setItem("token", res.data.token);
+
+      // role-based redirect
+      if (res.data.user.role === "driver") {
+        navigate("/create-ride");
+      } else {
+        navigate("/search");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -35,63 +48,66 @@ const Register = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow-md w-96"
+        className="bg-white p-6 rounded-lg shadow w-96"
       >
-        <h2 className="text-2xl font-bold mb-4 text-center">
-          Register
-        </h2>
+        <h2 className="text-2xl font-bold mb-4 text-center">Register</h2>
 
-        {error && (
-          <p className="text-red-500 text-sm mb-3 text-center">
-            {error}
-          </p>
-        )}
+        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
         <input
           name="name"
           placeholder="Name"
-          className="border p-2 rounded w-full mb-3"
+          value={form.name}
           onChange={handleChange}
           required
+          className="input"
         />
 
         <input
           name="email"
           type="email"
           placeholder="Email"
-          className="border p-2 rounded w-full mb-3"
+          value={form.email}
           onChange={handleChange}
           required
+          className="input"
         />
 
         <input
           name="password"
           type="password"
           placeholder="Password"
-          className="border p-2 rounded w-full mb-3"
+          value={form.password}
           onChange={handleChange}
           required
+          className="input"
         />
 
         <input
+          type="tel"
           name="phone"
-          placeholder="Phone"
-          className="border p-2 rounded w-full mb-3"
+          placeholder="Phone number"
+          value={form.phone}
           onChange={handleChange}
           required
+          className="input"
         />
 
         <select
           name="role"
-          className="border p-2 rounded w-full mb-4"
+          value={form.role}
           onChange={handleChange}
+          className="input"
         >
           <option value="passenger">Passenger</option>
           <option value="driver">Driver</option>
         </select>
 
-        <button className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700">
-          Register
+        <button
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 rounded mt-4 hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Registering..." : "Register"}
         </button>
       </form>
     </div>
