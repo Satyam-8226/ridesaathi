@@ -1,87 +1,47 @@
-# 🚗 RideSaathi
+# 🚗 RideSaathi – Smart Ride Sharing Platform
 
-RideSaathi is a full-stack MERN ride-sharing web application that connects drivers and passengers for shared rides.  
-It supports role-based access, real-time seat management, and clean user experience.
-
-
-## ✨ Features
-
-### 👤 Authentication & Roles
-- JWT-based authentication
-- Role-based access (Driver / Passenger)
-- Protected routes and persistent login
-
-### 🚘 Driver Features
-- Create rides
-- View and manage own rides
-- Cancel rides (automatically removes passengers)
-
-### 🧍 Passenger Features
-- Search rides by route
-- Join and leave rides
-- Automatically notified when a driver cancels a ride
-
-### 🧠 Smart UX
-- Real-time seat updates
-- Toast notifications
-- Clean UI with Tailwind CSS
-- No flicker or broken states
-
-
-## 🧰 Tech Stack
-
-**Frontend**
-- React (Vite)
-- Tailwind CSS
-- Axios
-- React Context API
-
-**Backend**
-- Node.js
-- Express.js
-- MongoDB Atlas
-- Mongoose
-
-**Authentication**
-- JWT (JSON Web Tokens)
+RideSaathi is a **full-stack MERN web application** that connects **drivers and passengers** for easy and efficient ride sharing. It supports role-based authentication, ride creation, joining/leaving rides, and real-time seat management.
 
 ---
 
-## 🟢 STEP 6: Add How to Run Locally (MANDATORY)
+## ✨ Features
 
+### 👤 Authentication & Authorization
+- JWT-based user authentication
+- Role-based access control (**Driver / Passenger**)
+- Protected routes
 
-## ▶️ Run Locally
+### 🚘 Driver Features
+- Create rides with source, destination, date, seats & price
+- View all created rides
+- Cancel rides
 
-### 1️⃣ Clone the repository
-```bash
-git clone https://github.com/Satyam-8226/ridesaathi.git
-cd ridesaathi
+### 🧍 Passenger Features
+- Browse available rides
+- Join or leave rides
+- View joined rides
+- Cannot join full or cancelled rides
 
-2️⃣ Backend Setup
-    cd backend
-    npm install
+### ⚙️ Core Functionalities
+- Seat availability handling
+- Ride status management (ACTIVE / CANCELLED)
+- RESTful API architecture
 
-    Create .env file:
-        PORT=5000
-        MONGO_URI=your_mongodb_uri
-        JWT_SECRET=your_secret
+---
 
-    Start backend: npm run dev
+## 🛠️ Tech Stack
 
-3️⃣ Frontend Setup
-    cd frontend
-    npm install
-    npm run dev
-```
+### Frontend
+- React.js
+- React Router
+- Context API
+- Axios
+- Tailwind CSS
 
-## 🚀 Future Improvements
-- Ride history (Completed / Cancelled)
-- Real-time notifications
-- Mobile-first UI
-- Payment integration
+### Backend
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- JWT Authentication
 
-## 👨‍💻 Author
-
-**Satyam Pandey**  
-B.Tech Student, MNNIT Allahabad  
-Full-Stack Web Developer (MERN)
