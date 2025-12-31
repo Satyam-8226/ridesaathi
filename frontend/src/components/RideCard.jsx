@@ -13,9 +13,6 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
   const isFull = ride.availableSeats === 0;
   const isCancelled = ride.status === "CANCELLED";
   const isOpen = ride.status === "OPEN";
-  console.log("MyRides debug → passengers:", ride.passengers);
-  console.log("MyRides debug → user:", user._id);
-
 
   /* ===============================
      API ACTIONS
@@ -24,7 +21,7 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
     try {
       setLoading(true);
       await API.post(`/rides/${ride._id}/join`);
-      refresh(); // re-fetch list
+      refresh();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to join ride");
     } finally {
@@ -57,43 +54,49 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
   };
 
   /* ===============================
-     STATUS COLOR
+     STATUS STYLES
   ================================ */
-  const statusColor = {
-    OPEN: "text-green-600",
-    FULL: "text-yellow-600",
-    CANCELLED: "text-red-600",
-  }[ride.status];
+  const statusStyles = {
+    OPEN: "text-green-600 bg-green-50",
+    FULL: "text-yellow-600 bg-yellow-50",
+    CANCELLED: "text-red-600 bg-red-50",
+  };
 
   return (
-    <div className="border rounded-lg p-4 shadow-sm flex justify-between items-center">
-      {/* LEFT INFO */}
-      <div>
-        <h3 className="font-semibold text-lg">
+    <div className="bg-white rounded-xl shadow-md p-5 flex flex-col gap-4">
+      {/* TOP: Route + Price */}
+      <div className="flex justify-between items-start">
+        <h3 className="text-lg font-semibold">
           {ride.source} → {ride.destination}
         </h3>
-
-        <p className="text-sm text-gray-600">
-          {new Date(ride.date).toDateString()}
-        </p>
-
-        <p className="text-sm text-gray-600">
-          Seats: {ride.availableSeats} | ₹{ride.price}
-        </p>
-
-        <p className={`text-sm font-semibold mt-1 ${statusColor}`}>
-          {ride.status}
-        </p>
+        <span className="text-lg font-bold text-green-600">
+          ₹{ride.price}
+        </span>
       </div>
 
-      {/* ACTION BUTTONS */}
-      <div className="flex gap-2">
+      {/* META INFO */}
+      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+        <span>📅 {new Date(ride.date).toDateString()}</span>
+        <span>💺 {ride.availableSeats} seats left</span>
+      </div>
+
+      {/* STATUS */}
+      <div>
+        <span
+          className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[ride.status]}`}
+        >
+          {ride.status}
+        </span>
+      </div>
+
+      {/* ACTIONS */}
+      <div className="flex gap-3 mt-2">
         {/* ===== SEARCH PAGE (Passenger) ===== */}
         {user.role === "passenger" && context === "search" && (
           <button
             onClick={joinRide}
             disabled={loading || isFull || isCancelled}
-            className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 transition"
           >
             Join Ride
           </button>
@@ -104,7 +107,7 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
           <button
             onClick={leaveRide}
             disabled={loading}
-            className="bg-red-500 text-white px-4 py-2 rounded disabled:opacity-50"
+            className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition"
           >
             Leave Ride
           </button>
@@ -115,7 +118,7 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
           <button
             onClick={cancelRide}
             disabled={loading}
-            className="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 transition"
           >
             Cancel Ride
           </button>

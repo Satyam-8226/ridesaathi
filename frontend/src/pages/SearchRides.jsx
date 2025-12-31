@@ -2,11 +2,9 @@ import { useState, useContext } from "react";
 import API from "../api/axios";
 import RideCard from "../components/RideCard";
 import { AuthContext } from "../auth/AuthContext";
-import Navbar from "../components/Navbar";
-
 
 const SearchRides = () => {
-  const { user } = useContext(AuthContext); // ✅ FIX
+  const { user } = useContext(AuthContext);
 
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -32,54 +30,65 @@ const SearchRides = () => {
     }
   };
 
-
   return (
-    <>
-    <Navbar />
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-2">Search Rides</h1>
+    <div className="max-w-6xl mx-auto px-6 py-8">
+      {/* HEADER */}
+      <h1 className="text-3xl font-bold mb-2">Search Rides</h1>
 
-      {/* ✅ WELCOME MESSAGE */}
       {user && (
-        <h2 className="text-lg text-gray-600 mb-6">
-          Welcome, {user.name}! Search and join available rides 🚗
-        </h2>
-      )}
-
-      {/* Search Box */}
-      <div className="flex gap-4 mb-6">
-        <input
-          className="border p-2 rounded w-full"
-          placeholder="From"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-        <input
-          className="border p-2 rounded w-full"
-          placeholder="To"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-        />
-        <button
-          onClick={searchRides}
-          className="bg-blue-600 text-white px-4 rounded hover:bg-blue-700"
-        >
-          Search
-        </button>
-      </div>
-
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error}</p>}
-
-      {/* No rides found */}
-      {!loading && searched && rides.length === 0 && !error && (
-        <p className="text-gray-500 text-center mt-6">
-          No rides found for this route 🚫
+        <p className="text-gray-600 mb-6">
+          {user.role === "driver"
+            ? `Welcome, ${user.name}! Create or manage your rides 🚘`
+            : `Welcome, ${user.name}! Find and join available rides 🚗`}
         </p>
       )}
 
-      {/* Rides list */}
-      <div className="space-y-4">
+      {/* SEARCH CARD */}
+      <div className="bg-white p-6 rounded-xl shadow mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input
+            className="border p-3 rounded-md"
+            placeholder="From"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+
+          <input
+            className="border p-3 rounded-md"
+            placeholder="To"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+
+          <button
+            onClick={searchRides}
+            className="bg-blue-600 text-white rounded-md px-6 py-3 hover:bg-blue-700 transition"
+          >
+            Search
+          </button>
+        </div>
+      </div>
+
+      {/* STATES */}
+      {loading && (
+        <p className="text-center text-gray-500">Searching rides...</p>
+      )}
+
+      {error && (
+        <p className="text-center text-red-500">{error}</p>
+      )}
+
+      {!loading && searched && rides.length === 0 && !error && (
+        <div className="text-center text-gray-500 mt-12">
+          <p className="text-lg">No rides found 🚫</p>
+          <p className="text-sm mt-2">
+            Try changing locations or check again later.
+          </p>
+        </div>
+      )}
+
+      {/* RIDES GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {rides.map((ride) => (
           <RideCard
             key={ride._id}
@@ -90,7 +99,6 @@ const SearchRides = () => {
         ))}
       </div>
     </div>
-    </>
   );
 };
 

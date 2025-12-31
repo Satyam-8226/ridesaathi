@@ -4,7 +4,7 @@ import API from "../api/axios";
 import { AuthContext } from "../auth/AuthContext";
 
 const CreateRide = () => {
-  const { user } = useContext(AuthContext);
+  const { user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -12,19 +12,27 @@ const CreateRide = () => {
     to: "",
     date: "",
     availableSeats: "",
-    price: ""
+    price: "",
   });
 
   const [error, setError] = useState("");
 
-  if (user.role !== "driver") {
+  /* ===============================
+     AUTH GUARD
+  ================================ */
+  if (loading) return null;
+
+  if (!user || user.role !== "driver") {
     return (
-      <div className="p-6 text-red-500">
+      <div className="max-w-6xl mx-auto px-6 py-12 text-center text-red-500">
         Access denied. Drivers only.
       </div>
     );
   }
 
+  /* ===============================
+     HANDLERS
+  ================================ */
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -42,67 +50,72 @@ const CreateRide = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow-md w-96"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-center">
-          Create Ride
-        </h2>
+    <div className="max-w-6xl mx-auto px-6 py-8">
+      {/* HEADER */}
+      <h1 className="text-3xl font-bold mb-2">Create a Ride</h1>
+      <p className="text-gray-600 mb-6">
+        Share your route and help passengers travel together 🚘
+      </p>
 
+      {/* FORM CARD */}
+      <div className="max-w-xl bg-white p-6 rounded-xl shadow">
         {error && (
-          <p className="text-red-500 text-sm mb-3 text-center">
+          <p className="text-red-500 text-sm mb-4 text-center">
             {error}
           </p>
         )}
 
-        <input
-          name="from"
-          placeholder="From"
-          className="border p-2 rounded w-full mb-3"
-          onChange={handleChange}
-          required
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            name="from"
+            placeholder="From"
+            className="border p-3 rounded-md w-full"
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          name="to"
-          placeholder="To"
-          className="border p-2 rounded w-full mb-3"
-          onChange={handleChange}
-          required
-        />
+          <input
+            name="to"
+            placeholder="To"
+            className="border p-3 rounded-md w-full"
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          name="date"
-          type="date"
-          className="border p-2 rounded w-full mb-3"
-          onChange={handleChange}
-          required
-        />
+          <input
+            name="date"
+            type="date"
+            className="border p-3 rounded-md w-full"
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          name="availableSeats"
-          type="number"
-          placeholder="Seats"
-          className="border p-2 rounded w-full mb-3"
-          onChange={handleChange}
-          required
-        />
+          <input
+            name="availableSeats"
+            type="number"
+            placeholder="Available seats"
+            className="border p-3 rounded-md w-full"
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          name="price"
-          type="number"
-          placeholder="Price"
-          className="border p-2 rounded w-full mb-4"
-          onChange={handleChange}
-          required
-        />
+          <input
+            name="price"
+            type="number"
+            placeholder="Price per seat (₹)"
+            className="border p-3 rounded-md w-full"
+            onChange={handleChange}
+            required
+          />
 
-        <button className="bg-green-600 text-white w-full py-2 rounded hover:bg-green-700">
-          Create Ride
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="w-full bg-green-600 text-white py-3 rounded-md hover:bg-green-700 transition"
+          >
+            Create Ride
+          </button>
+        </form>
+      </div>
     </div>
   );
 };
