@@ -295,35 +295,45 @@ export const cancelRide = async (req, res) => {
     const { rideId } = req.params;
     const userId = req.user.id;
 
+    // 1️⃣ Find ride
     const ride = await Ride.findById(rideId);
 
     if (!ride) {
       return res.status(404).json({ message: "Ride not found" });
     }
 
-    // Only driver can cancel
+    // 2️⃣ Only driver can cancel
     if (ride.driver.toString() !== userId) {
-      return res.status(403).json({ message: "Only driver can cancel this ride" });
+      return res.status(403).json({
+        message: "Only driver can cancel this ride",
+      });
     }
 
-    // Already cancelled
+    // 3️⃣ Already cancelled
     if (ride.status === "CANCELLED") {
-      return res.status(400).json({ message: "Ride already cancelled" });
+      return res.status(400).json({
+        message: "Ride already cancelled",
+      });
     }
 
-    const updatedRide = await Ride.findByIdAndUpdate(
-      rideId,
-      { status: "CANCELLED" },
-      { new: true }
-    );
+    // 4️⃣ Cancel ride + remove passengers
+    ride.status = "CANCELLED";
+    ride.passengers = [];                 // 🚨 auto-remove passengers
+    ride.availableSeats = ride.totalSeats;
 
-    res.status(200).json({
+    // 5️⃣ Save changes
+    await ride.save();
+
+    return res.status(200).json({
+      success: true,
       message: "Ride cancelled successfully",
-      ride: updatedRide
+      ride,
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Cancel ride error:", error);
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
 };

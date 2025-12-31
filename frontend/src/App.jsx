@@ -9,6 +9,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { useContext } from "react";
 import { AuthContext } from "./auth/AuthContext";
 import ProtectedRoute from "./layout/ProtectedRoute";
+import { Toaster } from "react-hot-toast";
 
 const Layout = ({ children }) => {
   const { user, loading } = useContext(AuthContext);
@@ -27,6 +28,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Toaster position="top-right" reverseOrder={false} />
         <Layout>
           <Routes>
             <Route path="/" element={<Login />} />

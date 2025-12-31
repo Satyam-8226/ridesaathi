@@ -1,6 +1,8 @@
 import { useContext, useState } from "react";
 import API from "../api/axios";
 import { AuthContext } from "../auth/AuthContext";
+import toast from "react-hot-toast";
+
 
 const RideCard = ({ ride, refresh, context = "search" }) => {
   const { user } = useContext(AuthContext);
@@ -42,16 +44,24 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
   };
 
   const cancelRide = async () => {
+    const confirmCancel = window.confirm(
+      "Are you sure you want to cancel this ride? All passengers will be removed."
+    );
+
+    if (!confirmCancel) return;
+
     try {
       setLoading(true);
       await API.post(`/rides/${ride._id}/cancel`);
+      toast.success("Ride cancelled successfully");
       refresh();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to cancel ride");
+      toast.error("Failed to cancel ride");
     } finally {
       setLoading(false);
     }
   };
+
 
   /* ===============================
      STATUS STYLES
@@ -86,6 +96,11 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
           className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[ride.status]}`}
         >
           {ride.status}
+          {ride.status === "CANCELLED" && (
+            <p className="text-sm text-red-500 mt-2">
+              Driver has cancelled this ride
+            </p>
+          )}
         </span>
       </div>
 
@@ -103,7 +118,7 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
         )}
 
         {/* ===== MY RIDES PAGE (Passenger) ===== */}
-        {user.role === "passenger" && context === "myrides" && isJoined && (
+        {user.role === "passenger" && context === "myrides" && isJoined && ride.status !== "CANCELLED" && (
           <button
             onClick={leaveRide}
             disabled={loading}

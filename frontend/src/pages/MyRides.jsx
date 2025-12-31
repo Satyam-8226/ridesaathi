@@ -2,10 +2,12 @@ import { useEffect, useState, useContext, useCallback } from "react";
 import API from "../api/axios";
 import { AuthContext } from "../auth/AuthContext";
 import RideCard from "../components/RideCard";
+import toast from "react-hot-toast";
 
 const MyRides = () => {
   const { user } = useContext(AuthContext);
 
+  const [prevRideIds, setPrevRideIds] = useState([]);
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -14,25 +16,42 @@ const MyRides = () => {
      FETCH MY RIDES
   ================================ */
   const fetchMyRides = useCallback(async () => {
-    if (!user) return;
+  if (!user) return;
 
-    setLoading(true);
-    setError("");
+  setLoading(true);
+  setError("");
 
-    try {
-      const endpoint =
-        user.role === "driver"
-          ? "/rides/my-rides/driver"
-          : "/rides/my-rides/passenger";
+  try {
+    const endpoint =
+      user.role === "driver"
+        ? "/rides/my-rides/driver"
+        : "/rides/my-rides/passenger";
 
-      const res = await API.get(endpoint);
-      setRides(res.data);
-    } catch {
-      setError("Failed to load rides");
-    } finally {
-      setLoading(false);
+    const res = await API.get(endpoint);
+
+    if (user.role === "passenger") {
+      const currentRideIds = res.data.map((ride) => ride._id);
+
+      if (
+        prevRideIds.length > 0 &&
+        currentRideIds.length < prevRideIds.length
+      ) {
+        toast.dismiss();
+        toast.error("A ride you joined was cancelled by the driver");
+      }
+
+      setPrevRideIds(currentRideIds);
     }
-  }, [user]);
+
+    setRides(res.data);
+  } catch {
+    setError("Failed to load rides");
+  } finally {
+    setLoading(false);
+  }
+}, [user]); // ✅ prevRideIds removed
+
+
 
   /* ===============================
      INITIAL LOAD
@@ -47,7 +66,7 @@ const MyRides = () => {
   if (loading) {
     return (
       <div className="max-w-6xl mx-auto px-6 py-8 text-gray-600">
-        Loading your rides...
+        Fetching your rides...
       </div>
     );
   }
@@ -76,7 +95,10 @@ const MyRides = () => {
           <p className="text-lg">
             {user.role === "driver"
               ? "You haven’t created any rides yet 🚘"
-              : "You haven’t joined any rides yet 🚗"}
+              : <p>
+                  <p>You haven’t joined any rides yet 🚗</p>
+                  <p>(Cancelled rides are removed automatically)</p>
+                </p>}
           </p>
           <p className="text-sm mt-2">
             {user.role === "driver"
