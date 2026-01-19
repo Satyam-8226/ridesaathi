@@ -73,74 +73,80 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md p-5 flex flex-col gap-4">
-      {/* TOP: Route + Price */}
-      <div className="flex justify-between items-start">
-        <h3 className="text-lg font-semibold">
-          {ride.source} → {ride.destination}
-        </h3>
-        <span className="text-lg font-bold text-green-600">
-          ₹{ride.price}
-        </span>
-      </div>
+  <div className="glass rounded-2xl p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+    
+    {/* TOP: Route + Price */}
+    <div className="flex justify-between items-start mb-2">
+      <h3 className="text-lg font-semibold">
+        {ride.source} → {ride.destination}
+      </h3>
 
-      {/* META INFO */}
-      <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-        <span>📅 {new Date(ride.date).toDateString()}</span>
-        <span>💺 {ride.availableSeats} seats left</span>
-      </div>
+      <span className="text-lg font-bold text-indigo-400">
+        ₹{ride.price}
+      </span>
+    </div>
 
-      {/* STATUS */}
-      <div>
-        <span
-          className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[ride.status]}`}
+    {/* META INFO */}
+    <div className="flex flex-wrap gap-4 text-sm text-slate-400 mb-3">
+      <span>📅 {new Date(ride.date).toDateString()}</span>
+      <span>💺 {ride.availableSeats} seats left</span>
+    </div>
+
+    {/* STATUS */}
+    <div className="mb-3">
+      <span
+        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[ride.status]}`}
+      >
+        {ride.status}
+      </span>
+
+      {ride.status === "CANCELLED" && (
+        <p className="text-sm text-red-400 mt-2">
+          Driver has cancelled this ride
+        </p>
+      )}
+    </div>
+
+    {/* ACTIONS */}
+    <div className="flex gap-3 mt-2">
+      {/* ===== SEARCH PAGE (Passenger) ===== */}
+      {user.role === "passenger" && context === "search" && (
+        <button
+          onClick={joinRide}
+          disabled={loading || isFull || isCancelled}
+          className="bg-indigo-600/80 hover:bg-indigo-600 text-white px-4 py-2 rounded-md transition disabled:opacity-50"
         >
-          {ride.status}
-          {ride.status === "CANCELLED" && (
-            <p className="text-sm text-red-500 mt-2">
-              Driver has cancelled this ride
-            </p>
-          )}
-        </span>
-      </div>
+          Join Ride
+        </button>
+      )}
 
-      {/* ACTIONS */}
-      <div className="flex gap-3 mt-2">
-        {/* ===== SEARCH PAGE (Passenger) ===== */}
-        {user.role === "passenger" && context === "search" && (
-          <button
-            onClick={joinRide}
-            disabled={loading || isFull || isCancelled}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 transition"
-          >
-            Join Ride
-          </button>
-        )}
-
-        {/* ===== MY RIDES PAGE (Passenger) ===== */}
-        {user.role === "passenger" && context === "myrides" && isJoined && ride.status !== "CANCELLED" && (
+      {/* ===== MY RIDES PAGE (Passenger) ===== */}
+      {user.role === "passenger" &&
+        context === "myrides" &&
+        isJoined &&
+        ride.status !== "CANCELLED" && (
           <button
             onClick={leaveRide}
             disabled={loading}
-            className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 disabled:opacity-50 transition"
+            className="bg-red-500/80 hover:bg-red-500 text-white px-4 py-2 rounded-md transition disabled:opacity-50"
           >
             Leave Ride
           </button>
         )}
 
-        {/* ===== DRIVER ===== */}
-        {user.role === "driver" && isOpen && (
-          <button
-            onClick={cancelRide}
-            disabled={loading}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 transition"
-          >
-            Cancel Ride
-          </button>
-        )}
-      </div>
+      {/* ===== DRIVER ===== */}
+      {user.role === "driver" && isOpen && (
+        <button
+          onClick={cancelRide}
+          disabled={loading}
+          className="bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-md transition disabled:opacity-50"
+        >
+          Cancel Ride
+        </button>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default RideCard;
