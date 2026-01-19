@@ -31,55 +31,59 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow-md w-96"
-      >
-        <h2 className="text-2xl font-bold mb-4 text-center">
-          RideSaathi Login
-        </h2>
+  <div className="min-h-[80vh] flex items-center justify-center">
+    <div className="glass rounded-2xl p-8 w-full max-w-md animate-fadeInUp">
+      <h2 className="text-2xl font-bold mb-4 text-center">
+        RideSaathi Login
+      </h2>
 
-        {error && (
-          <p className="text-red-500 text-sm mb-3 text-center">{error}</p>
-        )}
+      {error && (
+        <p className="text-red-400 text-sm mb-3 text-center">
+          {error}
+        </p>
+      )}
 
+      <form onSubmit={handleSubmit} className="space-y-4">
         <input
-          className="border p-2 rounded w-full mb-3"
+          type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
 
         <input
           type="password"
-          className="border p-2 rounded w-full mb-4"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
 
         <button
           type="submit"
-          className="bg-blue-600 text-white w-full py-2 rounded hover:bg-blue-700"
+          className="w-full bg-indigo-600/80 hover:bg-indigo-600 
+           text-white py-3 rounded-md transition 
+           hover:-translate-y-[1px] hover:shadow-lg"
         >
           Login
         </button>
-        <p className="text-sm text-center mt-4">
-          New user?{" "}
-          <span
-            onClick={() => navigate("/register")}
-            className="text-blue-600 cursor-pointer hover:underline"
-          >
-            Register here
-          </span>
-        </p>
-
       </form>
+
+      <p className="text-sm text-center mt-4 text-slate-400">
+        New user?{" "}
+        <span
+          onClick={() => navigate("/register")}
+          className="text-indigo-400 cursor-pointer hover:underline"
+        >
+          Register here
+        </span>
+      </p>
     </div>
-  );
+  </div>
+);
 };
 
 export default Login;

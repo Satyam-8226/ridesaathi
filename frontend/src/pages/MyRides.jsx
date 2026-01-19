@@ -72,55 +72,66 @@ const MyRides = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8">
-      {/* HEADER */}
-      <h1 className="text-3xl font-bold mb-2">
-        {user.role === "driver" ? "My Created Rides" : "My Joined Rides"}
-      </h1>
+  <div className="glass rounded-2xl p-6">
+    {/* HEADER */}
+    <h1 className="text-3xl font-bold mb-2">
+      {user.role === "driver" ? "My Created Rides" : "My Joined Rides"}
+    </h1>
 
-      <p className="text-gray-600 mb-6">
-        {user.role === "driver"
-          ? "Manage rides you have created."
-          : "Rides you have joined as a passenger."}
+    <p className="text-slate-400 mb-6">
+      {user.role === "driver"
+        ? "Manage rides you have created."
+        : "Rides you have joined as a passenger."}
+    </p>
+
+    {/* ERROR */}
+    {error && (
+      <p className="text-center text-red-400 mb-6">
+        {error}
       </p>
+    )}
 
-      {/* ERROR */}
-      {error && (
-        <p className="text-center text-red-500 mb-6">{error}</p>
-      )}
-
-      {/* EMPTY STATE */}
-      {!error && rides.length === 0 && (
-        <div className="text-center text-gray-500 mt-12">
-          <p className="text-lg">
-            {user.role === "driver"
-              ? "You haven’t created any rides yet 🚘"
-              : <p>
-                  <p>You haven’t joined any rides yet 🚗</p>
-                  <p>(Cancelled rides are removed automatically)</p>
-                </p>}
-          </p>
-          <p className="text-sm mt-2">
-            {user.role === "driver"
-              ? "Create a ride to get started."
-              : "Search for rides and join one."}
-          </p>
-        </div>
-      )}
-
-      {/* RIDES GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {rides.map((ride) => (
-          <RideCard
-            key={ride._id}
-            ride={ride}
-            refresh={fetchMyRides}
-            context="myrides"
-          />
-        ))}
+    {/* EMPTY STATE */}
+    {!error && rides.length === 0 && (
+      <div className="text-center text-slate-400 mt-12 space-y-1">
+        {user.role === "driver" ? (
+          <>
+            <p className="text-lg">
+              You haven’t created any rides yet 🚘
+            </p>
+            <p className="text-sm">
+              Create a ride to get started.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-lg">
+              You haven’t joined any rides yet 🚗
+            </p>
+            <p className="text-sm">
+              (Cancelled rides are removed automatically)
+            </p>
+            <p className="text-sm">
+              Search for rides and join one.
+            </p>
+          </>
+        )}
       </div>
+    )}
+
+    {/* RIDES GRID */}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+      {rides.map((ride) => (
+        <RideCard
+          key={ride._id}
+          ride={ride}
+          refresh={fetchMyRides}
+          context="myrides"
+        />
+      ))}
     </div>
-  );
+  </div>
+);
 };
 
 export default MyRides;
