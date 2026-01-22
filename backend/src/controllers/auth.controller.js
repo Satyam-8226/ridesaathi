@@ -60,11 +60,18 @@ export const registerUser = async (req, res) => {
     // 6️⃣ Generate token
     const token = generateToken(user._id);
 
+    // 7️⃣ Send token + user (MATCH LOGIN RESPONSE)
     return res.status(201).json({
-  success: true,
-  message: "Registration successful. Please login."
-});
-
+      success: true,
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      },
+    });
 
   } catch (error) {
     console.error("Register error:", error);
@@ -74,6 +81,7 @@ export const registerUser = async (req, res) => {
     });
   }
 };
+
 
 /* ===============================
    LOGIN USER

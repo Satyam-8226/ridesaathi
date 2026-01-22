@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import SearchRides from "./pages/SearchRides";
@@ -17,16 +17,35 @@ function App() {
           <Toaster position="top-right" reverseOrder={false} />
 
           <Routes>
-            <Route path="/" element={<Login />} />
+            {/* Public routes */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            <Route path="/search" element={<SearchRides />} />
-            <Route path="/my-rides" element={<MyRides />} />
+            {/* Protected routes (any authenticated user) */}
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute>
+                  <SearchRides />
+                </ProtectedRoute>
+              }
+            />
 
+            <Route
+              path="/my-rides"
+              element={
+                <ProtectedRoute>
+                  <MyRides />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Driver-only route */}
             <Route
               path="/create-ride"
               element={
-                <ProtectedRoute role="driver">
+                <ProtectedRoute allowedRoles={["driver"]}>
                   <CreateRide />
                 </ProtectedRoute>
               }

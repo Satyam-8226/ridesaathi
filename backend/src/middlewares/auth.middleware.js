@@ -3,28 +3,30 @@ import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
   try {
-    let token;
+    const authHeader = req.headers.authorization;
 
-    // 1️⃣ Read token from Authorization header
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
-
-    // 2️⃣ If token missing
-    if (!token) {
+    // 1️⃣ Header missing or wrong format
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: "Not authorized, token missing",
+        message: "Not authorized, no token",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    // 2️⃣ Token exists but is invalid value
+    if (!token || token === "null" || token === "undefined") {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized, invalid token",
       });
     }
 
     // 3️⃣ Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 4️⃣ Get user from DB
+    // 4️⃣ Fetch user
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
@@ -34,15 +36,15 @@ export const protect = async (req, res, next) => {
       });
     }
 
-    // 5️⃣ Attach user to request
+    // 5️⃣ Attach user
     req.user = user;
-
     next();
+
   } catch (error) {
-    console.error("Auth middleware error:", error);
+    console.error("Auth middleware error:", error.message);
     return res.status(401).json({
       success: false,
-      message: "Not authorized, token invalid",
+      message: "Not authorized, token invalid or expired",
     });
   }
 };
