@@ -1,104 +1,63 @@
 # 🚗 RideSaathi – Smart Ride Sharing Platform
 
-RideSaathi is a **full-stack MERN ride-sharing web application** that connects **drivers and passengers** through a secure, role-based system. The platform focuses on clean architecture, robust authentication, consistent ride lifecycle management, and a polished user experience.
+RideSaathi is a full-stack MERN ride-sharing web app connecting drivers and passengers with role-based auth, live tracking, and demand insights.
 
 ---
 
-## ✨ Key Features
-
-### 🔐 Authentication & Authorization
-- JWT-based authentication with tokens stored in `localStorage`
-- Role-based access control (**Driver / Passenger**)
-- Protected frontend routes
-- Auth state hydration using `/api/auth/me` to restore sessions on refresh without UI flicker
-
----
-
-### 🚘 Driver Features
-- Create rides with source, destination, date, total seats, and price
-- View all rides created by the driver
-- Cancel rides without deleting data
-- Ride status automatically updates to **CANCELLED**
-
----
-
-### 🧍 Passenger Features
-- Search rides by source and destination
-- Join and leave rides dynamically
-- View all joined rides
-- Automatically restricted from joining **FULL** or **CANCELLED** rides
-- Receives UI feedback when a joined ride is cancelled by the driver
-
----
-
-### ⚙️ Core Ride Management
-- Real-time seat availability synchronization
-- Ride lifecycle states: **OPEN | FULL | CANCELLED**
-- Automatic removal of passengers when a ride is cancelled
-- Cancelled rides are preserved for consistency and auditability
-- Normalized API responses to prevent frontend/backend mismatches
-
----
-
-### 🎨 UI & UX Highlights
-- Polished card-based layout for rides
-- Role-aware UI actions and messaging
-- Disabled actions for invalid ride states
-- Toast notifications for user feedback
-- Clear empty and loading states
-- No UI flicker during authentication hydration
+## ✨ Key Features (now)
+- JWT auth + OTP (email/phone) sign-in
+- Role-based flows: Driver / Passenger
+- Live driver GPS sharing via WebSockets (Socket.IO)
+- Passenger live-location sharing (opt-in) and driver view of passengers (name, phone, last location)
+- Real-time ride lifecycle: OPEN | FULL | CANCELLED
+- Heatmap demand analytics (aggregated search/join events) for drivers
+- TTL cleanup for stale passenger locations
+- Polished UI: glassmorphism, responsive components, accessible focus states
+- Optimistic UI for join/leave and toast notifications
+- REST fallbacks for live endpoints
 
 ---
 
 ## 🛠️ Tech Stack
-
-### Frontend
-- React (Vite)
-- React Router
-- Context API
-- Axios (with interceptor)
-- Tailwind CSS
-- react-hot-toast
-
-### Backend
-- Node.js
-- Express.js
-- MongoDB Atlas
-- Mongoose
-- JWT Authentication
+- Frontend: React + Vite, Tailwind-friendly CSS, Leaflet (maps), Socket.IO client
+- Backend: Node.js, Express, MongoDB (Mongoose), Socket.IO, Nodemailer (email OTP), Twilio (optional SMS)
 
 ---
 
-## 📡 API Overview
+## 🔧 Install & Run (local)
 
-### Authentication
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
+Backend
+1. cd backend
+2. npm install
+3. Install extra packages (if not present):
+   - socket.io, nodemailer (email), twilio (optional SMS), node-fetch (optional)
+   - Example:
+     npm install socket.io nodemailer twilio node-fetch
+4. Create `.env` with:
+   - MONGO_URI, JWT_SECRET, JWT_EXPIRES_IN, PORT
+   - Optional: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+   - Optional: TWILIO_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM
+5. Run:
+   npm run dev
 
-### Rides
-- `POST /api/rides` (Driver only)
-- `GET /api/rides/search`
-- `POST /api/rides/:id/join`
-- `POST /api/rides/:id/leave`
-- `POST /api/rides/:id/cancel`
-- `GET /api/rides/my-rides/driver`
-- `GET /api/rides/my-rides/passenger`
+Frontend
+1. cd frontend
+2. npm install
+3. Add map & socket libs:
+   npm install leaflet leaflet.heat socket.io-client
+   - If peer dependency conflicts arise (React version), install with:
+     npm install leaflet leaflet.heat socket.io-client --legacy-peer-deps
+4. Configure `.env`:
+   - VITE_API_BASE_URL=http://localhost:5000/api
+5. Run:
+   npm run dev
 
 ---
 
-## 🚀 Local Setup
+## ⚙️ API Overview (high level)
+- Auth: /api/auth/register, /api/auth/login, /api/auth/request-otp, /api/auth/verify-otp, /api/auth/me
+- Rides: /api/rides (create), /api/rides/search, /api/rides/:id/join, /api/rides/:id/leave, /api/rides/:id/cancel
+- Live & location: /api/rides/:id/location (driver REST), /api/rides/:id/live (REST), Socket.IO events: driver:location, passenger:location, ride:location, ride:passenger_location
+- Analytics: /api/analytics/demand (heat points)
+- Driver-only: /api/rides/:id/passengers
 
-```bash
-# Clone repository
-git clone https://github.com/Satyam-8226/ridesaathi.git
-
-# Backend setup
-cd backend
-npm install
-npm run dev
-
-# Frontend setup
-cd frontend
-npm install
-npm run dev
