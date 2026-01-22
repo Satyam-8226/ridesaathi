@@ -1,4 +1,8 @@
 import Ride from "../models/Ride.js";
+import mongoose from "mongoose";
+import PassengerLocation from "../models/PassengerLocation.js";
+import User from "../models/User.js";
+import { logDemandEvent } from "./analytics.controller.js";
 
 /* ===============================
    CREATE RIDE (Driver only)
@@ -79,8 +83,6 @@ export const createRide = async (req, res) => {
    JOIN RIDE (Passenger)
 ================================ */
 
-import mongoose from "mongoose";
-
 export const joinRide = async (req, res) => {
   try {
     const { rideId } = req.params;
@@ -114,6 +116,17 @@ export const joinRide = async (req, res) => {
       await updatedRide.save();
     }
 
+    // Log join event: prefer ride.driverLocation if present, else use ride.source text
+    try {
+      const userId = req.user.id;
+      const rideObj = await Ride.findById(rideId);
+      const lat = rideObj?.driverLocation?.lat ?? null;
+      const lng = rideObj?.driverLocation?.lng ?? null;
+      logDemandEvent({ type: "join", ride: rideId, user: userId, source: rideObj?.source || null, lat, lng }).catch(() => {});
+    } catch (e) {
+      // ignore
+    }
+
     res.status(200).json({
       message: "Ride joined successfully",
       ride: {
@@ -130,7 +143,7 @@ export const joinRide = async (req, res) => {
 
 
 /* ===============================
-   SEARCH RIDES (Public)
+   SEARCH RIDES (Public) - CASE INSENSITIVE
 ================================ */
 export const searchRides = async (req, res) => {
   try {
@@ -142,12 +155,22 @@ export const searchRides = async (req, res) => {
       });
     }
 
+    // escape user input for safe regex
+    const escapeRegex = (str = "") =>
+      str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    const fromTrim = from.trim();
+    const toTrim = to.trim();
+
     const rides = await Ride.find({
-      source: from,
-      destination: to,
+      source: { $regex: `^${escapeRegex(fromTrim)}$`, $options: "i" },
+      destination: { $regex: `^${escapeRegex(toTrim)}$`, $options: "i" },
       status: "OPEN",
       availableSeats: { $gt: 0 },
     }).sort({ date: 1 });
+
+    // Log demand event (non-blocking)
+    logDemandEvent({ type: "search", user: req.user?.id || null, source: fromTrim, destination: toTrim }).catch(() => {});
 
     // 🔹 Normalize response
     const formattedRides = rides.map((ride) => ({
@@ -178,7 +201,6 @@ export const searchRides = async (req, res) => {
     });
   }
 };
-
 
 
 
@@ -324,6 +346,21 @@ export const cancelRide = async (req, res) => {
     // 5️⃣ Save changes
     await ride.save();
 
+    // 6️⃣ Remove PassengerLocation records for this ride
+    await PassengerLocation.deleteMany({ ride: ride._id });
+
+    // 7️⃣ Emit cancellation to socket room
+    const io = req.app.get("io");
+    if (io) {
+      io.to(rideId).emit("ride:cancelled", {
+        rideId: ride._id.toString(),
+        status: ride.status,
+      });
+
+      // notify room that passenger locations cleared
+      io.to(rideId).emit("ride:passenger_locations_cleared", { rideId: ride._id.toString() });
+    }
+
     return res.status(200).json({
       success: true,
       message: "Ride cancelled successfully",
@@ -335,5 +372,185 @@ export const cancelRide = async (req, res) => {
     return res.status(500).json({
       message: "Server error",
     });
+  }
+};
+
+
+/* ===============================
+   DRIVER UPDATES GPS LOCATION (REST fallback)
+   POST /api/rides/:rideId/location
+================================ */
+export const updateDriverLocation = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { lat, lng } = req.body;
+
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      return res.status(400).json({ message: "Invalid coordinates" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+    if (ride.driver.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Only driver can update location" });
+    }
+
+    ride.driverLocation = { lat, lng };
+    ride.driverLocationUpdatedAt = new Date();
+    await ride.save();
+
+    // broadcast via sockets if available
+    const io = req.app.get("io");
+    if (io) {
+      io.to(rideId).emit("ride:location", {
+        rideId: ride._id.toString(),
+        driverLocation: ride.driverLocation,
+        driverLocationUpdatedAt: ride.driverLocationUpdatedAt,
+        status: ride.status,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Location updated",
+      driverLocation: ride.driverLocation,
+      driverLocationUpdatedAt: ride.driverLocationUpdatedAt,
+    });
+  } catch (error) {
+    console.error("Update driver location error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ===============================
+   GET LIVE RIDE STATUS + LOCATION (REST)
+   GET /api/rides/:rideId/live
+================================ */
+export const getLiveRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const ride = await Ride.findById(rideId);
+
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+    // passengers can view only if they joined
+    if (req.user.role === "passenger") {
+      const joined = ride.passengers.some((p) => p.toString() === req.user.id);
+      if (!joined) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    // drivers can view their own rides
+    if (req.user.role === "driver" && ride.driver.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      ride: {
+        _id: ride._id.toString(),
+        status: ride.status,
+        driverLocation: ride.driverLocation,
+        driverLocationUpdatedAt: ride.driverLocationUpdatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Get live ride error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ===============================
+   PASSENGER UPDATES THEIR LOCATION (REST)
+   POST /api/rides/:rideId/passenger-location
+================================ */
+export const updatePassengerLocation = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { lat, lng } = req.body;
+    const userId = req.user.id;
+
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      return res.status(400).json({ message: "Invalid coordinates" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+    // ensure the user is a passenger on this ride
+    const joined = ride.passengers.some((p) => p.toString() === userId);
+    if (!joined) {
+      return res.status(403).json({ message: "You have not joined this ride" });
+    }
+
+    const updated = await PassengerLocation.findOneAndUpdate(
+      { ride: rideId, passenger: userId },
+      { location: { lat, lng }, updatedAt: new Date() },
+      { upsert: true, new: true }
+    );
+
+    // broadcast to ride room
+    const io = req.app.get("io");
+    if (io) {
+      const passenger = await User.findById(userId).select("name phone");
+      io.to(rideId).emit("ride:passenger_location", {
+        rideId: rideId,
+        passengerId: userId,
+        name: passenger?.name || null,
+        phone: passenger?.phone || null,
+        location: updated.location,
+        updatedAt: updated.updatedAt,
+      });
+    }
+
+    return res.status(200).json({ success: true, message: "Location updated" });
+  } catch (error) {
+    console.error("updatePassengerLocation error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ===============================
+   DRIVER GETS PASSENGERS + LOCATIONS
+   GET /api/rides/:rideId/passengers
+================================ */
+export const getRidePassengers = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const userId = req.user.id;
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+    // only driver of ride can fetch this
+    if (ride.driver.toString() !== userId) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // fetch passenger user details
+    const users = await User.find({ _id: { $in: ride.passengers } }).select("name phone");
+    const locations = await PassengerLocation.find({ ride: rideId });
+
+    const locMap = {};
+    locations.forEach((l) => {
+      locMap[l.passenger.toString()] = {
+        location: l.location || null,
+        updatedAt: l.updatedAt || l.updatedAt,
+      };
+    });
+
+    const result = users.map((u) => ({
+      _id: u._id.toString(),
+      name: u.name,
+      phone: u.phone,
+      lastLocation: locMap[u._id.toString()] || null,
+    }));
+
+    return res.status(200).json({ success: true, passengers: result });
+  } catch (error) {
+    console.error("getRidePassengers error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };

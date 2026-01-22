@@ -50,77 +50,73 @@ const CreateRide = () => {
   };
 
   return (
-  <div className="glass rounded-2xl p-6 max-w-xl mx-auto">
-    {/* HEADER */}
-    <h1 className="text-3xl font-bold mb-2">
-      Create a Ride
-    </h1>
+    <div className="glass rounded-2xl p-6 max-w-xl mx-auto">
+      {/* HEADER */}
+      <h1 className="text-3xl font-bold mb-2">Create a Ride</h1>
 
-    <p className="text-slate-400 mb-6">
-      Share your route and help passengers travel together 🚘
-    </p>
+      {/* NEW: checklist */}
+      <div className="glass-soft p-3 rounded-md mb-4 small text-muted">
+        <div className="kicker mb-1">Before you create</div>
+        <ul className="list-disc pl-5 small">
+          <li>Confirm accurate date & time</li>
+          <li>Set total seats and fair price</li>
+          <li>Share live location when en route</li>
+        </ul>
+      </div>
 
-    {/* FORM CARD */}
-    <div className="glass rounded-xl p-6">
-      {error && (
-        <p className="text-red-400 text-sm mb-4 text-center">
-          {error}
-        </p>
-      )}
+      <p className="small text-muted mb-6">
+        Share your route and help passengers travel together.
+      </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          name="from"
-          placeholder="From"
-          className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          onChange={handleChange}
-          required
-        />
+      <div className="glass-soft rounded-xl p-4">
+        {error && (
+          <p className="text-red-400 text-sm mb-4 text-center">{error}</p>
+        )}
 
-        <input
-          name="to"
-          placeholder="To"
-          className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          onChange={handleChange}
-          required
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            name="from"
+            placeholder="From"
+            onChange={handleChange}
+            required
+          />
+          <input
+            name="to"
+            placeholder="To"
+            onChange={handleChange}
+            required
+          />
+          <input
+            name="date"
+            type="date"
+            onChange={handleChange}
+            required
+          />
+          <input
+            name="availableSeats"
+            type="number"
+            placeholder="Available seats"
+            onChange={handleChange}
+            required
+          />
+          <input
+            name="price"
+            type="number"
+            placeholder="Price per seat (₹)"
+            onChange={handleChange}
+            required
+          />
 
-        <input
-          name="date"
-          type="date"
-          className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          name="availableSeats"
-          type="number"
-          placeholder="Available seats"
-          className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          name="price"
-          type="number"
-          placeholder="Price per seat (₹)"
-          className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          onChange={handleChange}
-          required
-        />
-
-        <button
-          type="submit"
-          className="w-full bg-indigo-600/80 hover:bg-indigo-600 text-white py-3 rounded-md transition font-medium"
-        >
-          Create Ride
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="btn btn-primary w-full"
+          >
+            Create Ride
+          </button>
+        </form>
+      </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default CreateRide;

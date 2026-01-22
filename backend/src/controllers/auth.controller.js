@@ -1,5 +1,8 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import Otp from "../models/Otp.js";
+import { sendOtp } from "../utils/mailer.js";
 
 /* ===============================
    Generate JWT Token
@@ -161,5 +164,137 @@ export const getMe = async (req, res) => {
     return res.status(500).json({
       message: "Server error",
     });
+  }
+};
+
+
+/* ===============================
+   REQUEST OTP (rate-limited)
+   POST /api/auth/request-otp
+   body: { contact, type }
+================================ */
+export const requestOtp = async (req, res) => {
+  try {
+    let { contact, type } = req.body;
+    if (!contact || !type || !["email", "phone"].includes(type)) {
+      return res.status(400).json({ success: false, message: "Invalid contact/type" });
+    }
+
+    if (type === "email") contact = contact.toLowerCase();
+
+    // Per-contact cooldown: not more than 1 request per 60 seconds
+    const recent = await Otp.findOne({ contact, type }).sort({ createdAt: -1 });
+    if (recent) {
+      const ageMs = Date.now() - new Date(recent.createdAt).getTime();
+      if (ageMs < 60_000) {
+        return res.status(429).json({ success: false, message: "Please wait before requesting another OTP (60s cooldown)" });
+      }
+    }
+
+    // Per-hour cap: max 5 requests in last hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentCount = await Otp.countDocuments({ contact, type, createdAt: { $gte: oneHourAgo } });
+    if (recentCount >= 5) {
+      return res.status(429).json({ success: false, message: "Too many OTP requests. Try again later." });
+    }
+
+    // generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // hash & store
+    const salt = await bcrypt.genSalt(10);
+    const codeHash = await bcrypt.hash(otp, salt);
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    await Otp.findOneAndUpdate(
+      { contact, type },
+      { codeHash, expiresAt, attempts: 0, used: false },
+      { upsert: true, new: true }
+    );
+
+    try {
+      await sendOtp({ contact, type, otp });
+    } catch (err) {
+      console.error("SendOtp error:", err.message);
+      return res.status(500).json({ success: false, message: "Failed to send OTP" });
+    }
+
+    return res.status(200).json({ success: true, message: "OTP sent" });
+  } catch (error) {
+    console.error("requestOtp error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+/* ===============================
+   VERIFY OTP (attempt-limited)
+   POST /api/auth/verify-otp
+   body: { contact, type, otp }
+================================ */
+export const verifyOtp = async (req, res) => {
+  try {
+    let { contact, type, otp } = req.body;
+    if (!contact || !type || !otp) {
+      return res.status(400).json({ success: false, message: "Missing fields" });
+    }
+    if (type === "email") contact = contact.toLowerCase();
+
+    const record = await Otp.findOne({ contact, type });
+    if (!record) return res.status(400).json({ success: false, message: "No OTP requested" });
+    if (record.used) return res.status(400).json({ success: false, message: "OTP already used" });
+    if (new Date() > record.expiresAt) return res.status(400).json({ success: false, message: "OTP expired" });
+
+    const match = await bcrypt.compare(otp, record.codeHash);
+    if (!match) {
+      record.attempts = (record.attempts || 0) + 1;
+      // if attempts exceed threshold, mark used/lock to prevent brute force
+      if (record.attempts >= 5) {
+        record.used = true;
+      }
+      await record.save();
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    // successful verify
+    record.used = true;
+    await record.save();
+
+    // find or create user (auto passenger)
+    let user = null;
+    if (type === "email") {
+      user = await User.findOne({ email: contact.toLowerCase() });
+    } else {
+      user = await User.findOne({ phone: contact });
+    }
+
+    if (!user) {
+      const generatedPassword = Math.random().toString(36).slice(-8);
+      const userData = {
+        name: type === "email" ? contact.split("@")[0] : "Passenger",
+        role: "passenger",
+        password: generatedPassword,
+      };
+      if (type === "email") userData.email = contact.toLowerCase();
+      if (type === "phone") userData.phone = contact;
+      user = await User.create(userData);
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP verified",
+      token,
+      user: {
+        _id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      },
+    });
+  } catch (error) {
+    console.error("verifyOtp error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };

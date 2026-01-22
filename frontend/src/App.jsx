@@ -8,6 +8,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import ProtectedRoute from "./layout/ProtectedRoute";
 import { Toaster } from "react-hot-toast";
 import AppLayout from "./layout/AppLayout";
+import Heatmap from "./pages/Heatmap";
 
 function App() {
   return (
@@ -47,6 +48,16 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["driver"]}>
                   <CreateRide />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Driver Demand Heatmap */}
+            <Route
+              path="/heatmap"
+              element={
+                <ProtectedRoute allowedRoles={["driver"]}>
+                  <Heatmap />
                 </ProtectedRoute>
               }
             />

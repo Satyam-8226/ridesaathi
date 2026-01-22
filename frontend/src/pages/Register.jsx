@@ -60,79 +60,88 @@ const Register = () => {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="glass rounded-2xl p-8 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4 text-center">
-          Create your account
-        </h2>
+      <div className="glass rounded-2xl p-6 w-full max-w-3xl animate-fadeInUp">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Left promo panel */}
+          <div className="hidden md:flex flex-col justify-center px-6">
+            <h2 className="text-3xl font-bold mb-2">Create your account</h2>
+            <p className="small text-muted mb-4">
+              Join RideSaathi — share rides as a driver or travel smart as a passenger.
+            </p>
 
-        {error && (
-          <p className="text-red-400 text-sm mb-3 text-center">
-            {error}
-          </p>
-        )}
+            <div className="glass-soft p-3 rounded-md text-sm text-muted">
+              <div className="kicker mb-2">Why join RideSaathi?</div>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Earn by sharing rides (Drivers)</li>
+                <li>Find affordable shared rides (Passengers)</li>
+                <li>Secure auth, live tracking, polished UX</li>
+              </ul>
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            name="name"
-            placeholder="Name"
-            value={form.name}
-            onChange={handleChange}
-            required
-            className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+          {/* Form */}
+          <div className="p-2">
+            {error && (
+              <p className="text-red-400 text-sm mb-3 text-center">
+                {error}
+              </p>
+            )}
 
-          <input
-            name="email"
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <input
+                name="name"
+                placeholder="Name"
+                value={form.name}
+                onChange={handleChange}
+                required
+              />
 
-          <input
-            name="password"
-            type="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+              <input
+                name="email"
+                type="email"
+                placeholder="Email"
+                value={form.email}
+                onChange={handleChange}
+                required
+              />
 
-          <input
-            type="tel"
-            name="phone"
-            placeholder="Phone number"
-            value={form.phone}
-            onChange={handleChange}
-            required
-            className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+              <input
+                name="password"
+                type="password"
+                placeholder="Password"
+                value={form.password}
+                onChange={handleChange}
+                required
+              />
 
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleChange}
-            className="w-full bg-transparent border border-white/20 p-3 rounded-md text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          >
-            <option className="bg-slate-900" value="passenger">
-              Passenger
-            </option>
-            <option className="bg-slate-900" value="driver">
-              Driver
-            </option>
-          </select>
+              <input
+                type="tel"
+                name="phone"
+                placeholder="Phone number"
+                value={form.phone}
+                onChange={handleChange}
+                required
+              />
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600/80 hover:bg-indigo-600 text-white py-3 rounded-md transition font-medium disabled:opacity-50"
-          >
-            {loading ? "Registering..." : "Register"}
-          </button>
-        </form>
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+              >
+                <option value="passenger">Passenger</option>
+                <option value="driver">Driver</option>
+              </select>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn btn-primary w-full"
+              >
+                {loading ? "Registering..." : "Create account"}
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );

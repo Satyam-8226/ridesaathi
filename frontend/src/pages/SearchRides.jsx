@@ -31,79 +31,72 @@ const SearchRides = () => {
   };
 
   return (
-  <div className="glass rounded-2xl p-6">
-    {/* HEADER */}
-    <h1 className="text-3xl font-bold mb-2">Search Rides</h1>
+    <div className="glass rounded-2xl p-6">
+      <h1 className="text-3xl font-bold mb-2">Search Rides</h1>
 
-    {user && (
-      <p className="text-slate-400 mb-6">
-        {user.role === "driver"
-          ? `Welcome, ${user.name}! Create or manage your rides 🚘`
-          : `Welcome, ${user.name}! Find and join available rides 🚗`}
-      </p>
-    )}
-
-    {/* SEARCH CARD */}
-    <div className="glass rounded-xl p-6 mb-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input
-          className="bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="From"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-
-        <input
-          className="bg-transparent border border-white/20 p-3 rounded-md text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          placeholder="To"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-        />
-
-        <button
-          onClick={searchRides}
-          className="bg-indigo-600/80 hover:bg-indigo-600 text-white rounded-md px-6 py-3 transition font-medium"
-        >
-          Search
-        </button>
+      <div className="glass-soft p-3 rounded-md mb-4">
+        <div className="kicker mb-1">Quick tips</div>
+        <div className="small text-muted">
+          Try exact city names or common spellings. Use the date filter for
+          matching trips. Click "Join" to reserve a seat instantly.
+        </div>
       </div>
-    </div>
 
-    {/* STATES */}
-    {loading && (
-      <p className="text-center text-slate-400">
-        Searching rides...
-      </p>
-    )}
-
-    {error && (
-      <p className="text-center text-red-400">
-        {error}
-      </p>
-    )}
-
-    {!loading && searched && rides.length === 0 && !error && (
-      <div className="text-center text-slate-400 mt-12">
-        <p className="text-lg">No rides found 🚫</p>
-        <p className="text-sm mt-2">
-          Try changing locations or check again later.
+      {user && (
+        <p className="small text-muted mb-6">
+          {user.role === "driver"
+            ? `Welcome, ${user.name}! Create or manage your rides.`
+            : `Welcome, ${user.name}! Find and join available rides.`}
         </p>
-      </div>
-    )}
+      )}
 
-    {/* RIDES GRID */}
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-      {rides.map((ride) => (
-        <RideCard
-          key={ride._id}
-          ride={ride}
-          refresh={searchRides}
-          context="search"
-        />
-      ))}
+      <div className="glass-soft rounded-xl p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <input
+            placeholder="From"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+
+          <input
+            placeholder="To"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+
+          <button
+            onClick={searchRides}
+            className="btn btn-primary"
+          >
+            Search
+          </button>
+        </div>
+      </div>
+
+      {loading && <div className="empty-state">Searching rides...</div>}
+      {error && <div className="empty-state text-red-400">{error}</div>}
+
+      {!loading && searched && rides.length === 0 && !error && (
+        <div className="empty-state">
+          <p className="text-lg">No rides found</p>
+          <p className="small mt-2">
+            Try changing locations or check again later.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        {rides.map((ride) => (
+          <RideCard
+            key={ride._id}
+            ride={ride}
+            refresh={searchRides}
+            context="search"
+          />
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default SearchRides;

@@ -45,6 +45,18 @@ const rideSchema = new mongoose.Schema(
     },
 
 
+    // NEW: live GPS info from driver
+    driverLocation: {
+      // store as Geo-like object { lat, lng }
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null }
+    },
+
+    driverLocationUpdatedAt: {
+      type: Date,
+      default: null
+    },
+
     passengers: [
       {
         type: mongoose.Schema.Types.ObjectId,

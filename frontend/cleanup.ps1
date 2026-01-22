@@ -1,0 +1,2 @@
+Remove-Item -Recurse -Force .\node_modules
+Remove-Item -Force .\package-lock.json
