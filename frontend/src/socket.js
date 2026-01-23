@@ -12,14 +12,14 @@ export function getSocket() {
 
   const base = getBaseUrl();
 
-  // create socket but do NOT auto-connect
   socket = io(base, {
     autoConnect: false,
-    transports: ["websocket"],
+    withCredentials: true,
+    // ❌ DO NOT force transports
   });
 
-  // If a valid token exists in storage, attach and connect
   const token = localStorage.getItem("token");
+
   if (
     token &&
     typeof token === "string" &&
@@ -34,18 +34,18 @@ export function getSocket() {
   return socket;
 }
 
-// Explicit connect helper (use after login)
 export function connectSocketWithToken(token) {
   const s = getSocket();
   if (!token) return;
+
   s.auth = { token: token.trim().replace(/^"|"$/g, "") };
   if (!s.connected) s.connect();
 }
 
-// Explicit disconnect helper (use on logout)
 export function disconnectSocket() {
-  if (socket && socket.connected) {
+  if (socket) {
     socket.disconnect();
+    socket = null;
   }
 }
 

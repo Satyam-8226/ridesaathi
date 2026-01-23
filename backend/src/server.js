@@ -18,14 +18,19 @@ const startServer = async () => {
 
     const server = http.createServer(app);
 
+    const FRONTEND_ORIGIN =
+      process.env.NODE_ENV === "production"
+        ? "https://your-frontend-domain.com"
+        : "http://localhost:5173";
+
     const io = new Server(server, {
       cors: {
-        origin: true,
+        origin: FRONTEND_ORIGIN,
         methods: ["GET", "POST"],
         credentials: true,
       },
-      transports: ["websocket"],
     });
+
 
     // Attach io to express app for controller access
     app.set("io", io);

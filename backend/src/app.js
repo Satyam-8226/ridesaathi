@@ -14,7 +14,17 @@ const app = express();
 ================================ */
 
 // Enable CORS for all origins
-app.use(cors());
+const FRONTEND_ORIGIN =
+  process.env.NODE_ENV === "production"
+    ? "https://your-frontend-domain.com"
+    : "http://localhost:5173";
+
+app.use(
+  cors({
+    origin: FRONTEND_ORIGIN,
+    credentials: true,
+  })
+);
 
 // Parse JSON request body
 app.use(express.json());
