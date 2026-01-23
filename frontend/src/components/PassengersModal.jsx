@@ -102,7 +102,11 @@ export default function PassengersModal({ rideId, onClose }) {
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/40"
+        style={{ backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
+        onClick={onClose}
+      />
       <div className="glass rounded-xl max-w-3xl w-full z-70 p-4 relative">
         <button onClick={onClose} className="absolute top-3 right-3 text-muted">✕</button>
         <h3 className="text-lg font-semibold mb-3">Passengers</h3>
