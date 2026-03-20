@@ -97,7 +97,7 @@ export const joinRide = async (req, res) => {
         passengers: { $ne: userId },
       },
       {
-        $addToSet: { passengers: userId }, // ✅ FIX
+        $addToSet: { passengers: userId },
         $inc: { availableSeats: -1 },
       },
       { new: true }
@@ -142,9 +142,9 @@ export const joinRide = async (req, res) => {
 
 
 
-/* ===============================
+/* ========================================
    SEARCH RIDES (Public) - CASE INSENSITIVE
-================================ */
+======================================== */
 export const searchRides = async (req, res) => {
   try {
     const { from, to } = req.query;
