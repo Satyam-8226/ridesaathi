@@ -49,7 +49,7 @@ const MyRides = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]); // ✅ prevRideIds removed
+  }, [user, prevRideIds]);
 
   /* ===============================
      INITIAL LOAD

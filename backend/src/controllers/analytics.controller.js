@@ -17,11 +17,11 @@ const geocode = async (query) => {
   }
 };
 
-/* ===============================
+/* ===================================================================
    AGGREGATE DEMAND -> HEAT POINTS
    GET /api/analytics/demand?start=ISO&end=ISO&precision=2
    precision = number of decimal multiplier (e.g. 2 => ~1km buckets)
-================================ */
+====================================================================== */
 export const getDemandHeat = async (req, res) => {
   try {
     const { start, end, precision = 2 } = req.query;
@@ -68,6 +68,44 @@ export const getDemandHeat = async (req, res) => {
     return res.status(200).json({ success: true, points: results });
   } catch (error) {
     console.error("getDemandHeat error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const getHotspots = async (req, res) => {
+  try {
+    const { hours = 24, limit = 10 } = req.query;
+    const since = new Date(Date.now() - Number(hours) * 3600 * 1000);
+
+    const pipeline = [
+      { $match: { createdAt: { $gte: since }, "location.lat": { $ne: null }, "location.lng": { $ne: null } } },
+      {
+        $group: {
+          _id: {
+            lat: { $round: ["$location.lat", 2] },
+            lng: { $round: ["$location.lng", 2] },
+          },
+          count: { $sum: 1 },
+          types: { $addToSet: "$type" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          lat: "$_id.lat",
+          lng: "$_id.lng",
+          weight: "$count",
+          types: 1,
+        },
+      },
+      { $sort: { weight: -1 } },
+      { $limit: Number(limit) },
+    ];
+
+    const hotspots = await DemandEvent.aggregate(pipeline);
+    return res.status(200).json({ success: true, hotspots });
+  } catch (error) {
+    console.error("getHotspots error:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

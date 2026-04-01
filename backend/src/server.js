@@ -1,41 +1,48 @@
-import dotenv from "dotenv";
+﻿import dotenv from "dotenv";
 import app from "./app.js";
 import connectDB from "./config/db.js";
 import http from "http";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
+import logger from "./utils/logger.js";
 import User from "./models/User.js";
 import Ride from "./models/Ride.js";
 import PassengerLocation from "./models/PassengerLocation.js";
 
 dotenv.config();
 
+const requiredEnvVars = ["MONGO_URI", "JWT_SECRET"];
+
 const startServer = async () => {
   try {
-    await connectDB(); // 🔑 WAIT for DB
+    logger.info("Starting RideSaathi API Server");
+
+    const missingVars = requiredEnvVars.filter((name) => !process.env[name]);
+    if (missingVars.length > 0) {
+      throw new Error(`Missing environment variables: ${missingVars.join(", ")}`);
+    }
+
+    await connectDB();
+    logger.info("Database connected successfully");
 
     const PORT = process.env.PORT || 5000;
-
+    const FRONTEND_ORIGIN = process.env.FRONTEND_URL || "http://localhost:5173";
     const server = http.createServer(app);
-
-    const FRONTEND_ORIGIN =
-      process.env.NODE_ENV === "production"
-        ? "https://your-frontend-domain.com"
-        : "http://localhost:5173";
 
     const io = new Server(server, {
       cors: {
         origin: FRONTEND_ORIGIN,
-        methods: ["GET", "POST"],
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         credentials: true,
       },
+      transports: ["websocket", "polling"],
+      maxHttpBufferSize: 1e6,
+      pingInterval: 25000,
+      pingTimeout: 20000,
     });
 
-
-    // Attach io to express app for controller access
     app.set("io", io);
 
-    // Socket auth middleware (JWT)
     io.use(async (socket, next) => {
       try {
         const token =
@@ -50,49 +57,83 @@ const startServer = async () => {
 
         socket.user = user;
         next();
-      } catch (err) {
-        next(new Error("Auth error"));
+      } catch (error) {
+        logger.error("Socket auth error", error);
+        next(new Error("Authentication failed"));
       }
     });
 
     io.on("connection", (socket) => {
-      console.log("Socket connected:", socket.id, "user:", socket.user?.email);
+      logger.info("Socket connected", {
+        socketId: socket.id,
+        userId: socket.user?._id?.toString(),
+        role: socket.user?.role,
+      });
 
       socket.on("joinRoom", (rideId) => {
-        if (rideId) socket.join(rideId);
+        if (!rideId) return;
+        socket.join(rideId);
+        logger.debug("User joined room", { socketId: socket.id, rideId });
       });
 
       socket.on("leaveRoom", (rideId) => {
-        if (rideId) socket.leave(rideId);
+        if (!rideId) return;
+        socket.leave(rideId);
+        logger.debug("User left room", { socketId: socket.id, rideId });
       });
 
-      // Driver sends real-time location
       socket.on("driver:location", async (payload) => {
         try {
           const { rideId, lat, lng } = payload || {};
           if (!rideId || typeof lat !== "number" || typeof lng !== "number") return;
 
-          if (socket.user.role !== "driver") return;
+          if (socket.user.role !== "driver") {
+            logger.warn("Non-driver attempted to send driver location", {
+              userId: socket.user.id,
+            });
+            return;
+          }
+
           const ride = await Ride.findById(rideId);
-          if (!ride) return;
-          if (ride.driver.toString() !== socket.user.id) return;
+          if (!ride) {
+            logger.warn("Ride not found for location update", { rideId });
+            return;
+          }
+
+          if (ride.driver.toString() !== socket.user.id) {
+            logger.warn("Driver tried to update location for different ride", {
+              userId: socket.user.id,
+              rideId,
+            });
+            return;
+          }
 
           ride.driverLocation = { lat, lng };
           ride.driverLocationUpdatedAt = new Date();
           await ride.save();
 
-          io.to(rideId).emit("ride:location", {
+          const driverPayload = {
             rideId: ride._id.toString(),
+            driverId: socket.user._id.toString(),
+            driverName: socket.user.name,
             driverLocation: ride.driverLocation,
             driverLocationUpdatedAt: ride.driverLocationUpdatedAt,
             status: ride.status,
-          });
+            source: ride.source,
+            destination: ride.destination,
+            sourceLocation: ride.sourceLocation,
+            destinationLocation: ride.destinationLocation,
+            routePath: ride.routePath || [],
+          };
+
+          io.to(rideId).emit("ride:location", driverPayload);
+          io.emit("driverLocationUpdate", driverPayload);
+          io.emit("nearbyDrivers", driverPayload);
         } catch (error) {
-          console.error("driver:location error", error);
+          logger.error("driver:location error", error);
         }
       });
 
-      // PASSENGER sends real-time location
       socket.on("passenger:location", async (payload) => {
         try {
           const { rideId, lat, lng } = payload || {};
@@ -100,10 +141,16 @@ const startServer = async () => {
           if (socket.user.role !== "passenger") return;
 
           const ride = await Ride.findById(rideId);
-          if (!ride) return;
-          // ensure passenger is part of ride
+          if (!ride) {
+            logger.warn("Ride not found for passenger location update", { rideId });
+            return;
+          }
+
           const isPassenger = ride.passengers.some((p) => p.toString() === socket.user.id);
-          if (!isPassenger) return;
+          if (!isPassenger) {
+            logger.warn("Passenger not part of ride", { userId: socket.user.id, rideId });
+            return;
+          }
 
           const updated = await PassengerLocation.findOneAndUpdate(
             { ride: rideId, passenger: socket.user.id },
@@ -111,7 +158,6 @@ const startServer = async () => {
             { upsert: true, new: true }
           );
 
-          // broadcast to ride room (driver + other passengers)
           io.to(rideId).emit("ride:passenger_location", {
             rideId,
             passengerId: socket.user.id,
@@ -120,21 +166,46 @@ const startServer = async () => {
             location: updated.location,
             updatedAt: updated.updatedAt,
           });
-        } catch (err) {
-          console.error("passenger:location error", err);
+        } catch (error) {
+          logger.error("passenger:location error", error);
         }
       });
 
       socket.on("disconnect", () => {
-        // console.log("Socket disconnected:", socket.id);
+        logger.debug("Socket disconnected", { socketId: socket.id });
+      });
+
+      socket.on("error", (error) => {
+        logger.error("Socket error", error, { socketId: socket.id });
       });
     });
 
     server.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on port ${PORT}`);
+      logger.info(`✅ RideSaathi API Server running on port ${PORT}`);
+    });
+
+    server.on("error", (error) => {
+      logger.error("Server error", error);
+      process.exit(1);
+    });
+
+    process.on("SIGTERM", () => {
+      logger.info("SIGTERM received, shutting down gracefully");
+      server.close(() => {
+        logger.info("Server closed");
+        process.exit(0);
+      });
+    });
+
+    process.on("SIGINT", () => {
+      logger.info("SIGINT received, shutting down");
+      server.close(() => {
+        logger.info("Server closed");
+        process.exit(0);
+      });
     });
   } catch (error) {
-    console.error("Server startup failed ❌", error);
+    logger.error("Server startup failed", error);
     process.exit(1);
   }
 };

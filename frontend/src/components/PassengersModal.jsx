@@ -36,7 +36,7 @@ export default function PassengersModal({ rideId, onClose }) {
             setDriverLocation(ride.driverLocation);
           }
         }
-      } catch (err) {
+      } catch {
         // noop
       } finally {
         if (mounted) setLoading(false);

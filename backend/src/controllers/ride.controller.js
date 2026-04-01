@@ -2,78 +2,128 @@ import Ride from "../models/Ride.js";
 import mongoose from "mongoose";
 import PassengerLocation from "../models/PassengerLocation.js";
 import User from "../models/User.js";
+import PickupPoint from "../models/PickupPoint.js";
+import Review from "../models/Review.js";
 import { logDemandEvent } from "./analytics.controller.js";
+
+// Utility functions for route-based matching
+const toRad = (deg) => (deg * Math.PI) / 180;
+const haversineDistanceMeters = (a, b) => {
+  const R = 6371e3;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  return R * c;
+};
+
+const routeContainsPoint = (routePath = [], target, toleranceMeters = 500) => {
+  if (!Array.isArray(routePath) || routePath.length === 0) return false;
+  return routePath.some((point) => haversineDistanceMeters(point, target) <= toleranceMeters);
+};
 
 /* ===============================
    CREATE RIDE (Driver only)
 ================================ */
 export const createRide = async (req, res) => {
   try {
-    // 1️⃣ Role-based access control
     if (req.user.role !== "driver") {
-      return res.status(403).json({
-        success: false,
-        message: "Only drivers can create rides",
-      });
+      return res.status(403).json({ success: false, message: "Only drivers can create rides" });
     }
 
-    // 2️⃣ Extract & validate input
-    const { from, to, date, availableSeats, price } = req.body;
+    const {
+      from,
+      to,
+      date,
+      availableSeats,
+      price,
+      totalFare,
+      sourceLat,
+      sourceLng,
+      destLat,
+      destLng,
+      pickupPointId,
+      isScheduled,
+      scheduledTime,
+    } = req.body;
 
     if (!from || !to || !date || !availableSeats || !price) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
+      return res.status(400).json({ success: false, message: "Missing required ride fields" });
     }
 
     if (availableSeats <= 0 || price <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Seats and price must be positive values",
-      });
+      return res.status(400).json({ success: false, message: "Seats and price must be positive" });
     }
 
-    // 3️⃣ CHECK DUPLICATE FIRST ✅
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ success: false, message: "Invalid date" });
+    }
+
     const existingRide = await Ride.findOne({
       driver: req.user._id,
       source: from,
       destination: to,
-      date: new Date(date),
+      date: parsedDate,
       status: "OPEN",
     });
 
     if (existingRide) {
-      return res.status(400).json({
-        success: false,
-        message: "You already have an open ride for this route and date",
-      });
+      return res.status(400).json({ success: false, message: "You already have an open ride for this route and date" });
     }
 
-    // 4️⃣ CREATE ride only if safe ✅
+    let pickupPoint = null;
+    if (pickupPointId) {
+      pickupPoint = await PickupPoint.findById(pickupPointId);
+      if (!pickupPoint) {
+        return res.status(400).json({ success: false, message: "Invalid pickup point" });
+      }
+    }
+
+    const sourceLocation = {
+      type: "Point",
+      coordinates: [
+        typeof sourceLng === "number" ? sourceLng : 0,
+        typeof sourceLat === "number" ? sourceLat : 0,
+      ],
+    };
+    const destinationLocation = {
+      type: "Point",
+      coordinates: [
+        typeof destLng === "number" ? destLng : 0,
+        typeof destLat === "number" ? destLat : 0,
+      ],
+    };
+
+    const routePath = Array.isArray(req.body.routePath)
+      ? req.body.routePath
+          .filter((p) => p && typeof p.lat === "number" && typeof p.lng === "number")
+          .slice(0, 200)
+      : [];
+
     const ride = await Ride.create({
       driver: req.user._id,
       source: from,
       destination: to,
-      date: new Date(date),
+      date: parsedDate,
       totalSeats: availableSeats,
       availableSeats,
       price,
+      totalFare: totalFare || price * availableSeats,
+      sourceLocation,
+      destinationLocation,
+      pickupPoint: pickupPoint?._id || null,
+      routePath,
+      isScheduled: !!isScheduled,
+      scheduledTime: isScheduled && scheduledTime ? new Date(scheduledTime) : null,
     });
 
-    // 5️⃣ Success response
-    return res.status(201).json({
-      success: true,
-      message: "Ride created successfully",
-      ride,
-    });
+    return res.status(201).json({ success: true, message: "Ride created successfully", ride });
   } catch (error) {
     console.error("Create ride error:", error.message);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Server error while creating ride",
-    });
+    return res.status(500).json({ success: false, message: error.message || "Server error while creating ride" });
   }
 };
 
@@ -104,25 +154,28 @@ export const joinRide = async (req, res) => {
     );
 
     if (!updatedRide) {
-      return res.status(400).json({
-        message:
-          "Cannot join ride (ride full, cancelled, already joined, or invalid)",
-      });
+      return res.status(400).json({ message: "Cannot join ride (ride full, cancelled, already joined, or invalid)" });
     }
 
-    // Auto mark FULL
     if (updatedRide.availableSeats === 0) {
       updatedRide.status = "FULL";
       await updatedRide.save();
     }
 
-    // Log join event: prefer ride.driverLocation if present, else use ride.source text
+    const io = req.app.get("io");
+    if (io) {
+      io.to(rideId).emit("ride:updated", {
+        rideId: updatedRide._id.toString(),
+        availableSeats: updatedRide.availableSeats,
+        status: updatedRide.status,
+      });
+    }
+
     try {
-      const userId = req.user.id;
       const rideObj = await Ride.findById(rideId);
       const lat = rideObj?.driverLocation?.lat ?? null;
       const lng = rideObj?.driverLocation?.lng ?? null;
-      logDemandEvent({ type: "join", ride: rideId, user: userId, source: rideObj?.source || null, lat, lng }).catch(() => {});
+      logDemandEvent({ type: "join", ride: rideId, user: req.user.id, source: rideObj?.source || null, lat, lng }).catch(() => {});
     } catch (e) {
       // ignore
     }
@@ -147,58 +200,96 @@ export const joinRide = async (req, res) => {
 ======================================== */
 export const searchRides = async (req, res) => {
   try {
-    const { from, to } = req.query;
+    const {
+      from,
+      to,
+      fromLat,
+      fromLng,
+      toLat,
+      toLng,
+      radiusKm = 5,
+      fromPickupPointId,
+      toPickupPointId,
+    } = req.query;
 
-    if (!from || !to) {
-      return res.status(400).json({
-        message: "From and To locations are required",
-      });
-    }
-
-    // escape user input for safe regex
-    const escapeRegex = (str = "") =>
-      str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-    const fromTrim = from.trim();
-    const toTrim = to.trim();
-
-    const rides = await Ride.find({
-      source: { $regex: `^${escapeRegex(fromTrim)}$`, $options: "i" },
-      destination: { $regex: `^${escapeRegex(toTrim)}$`, $options: "i" },
+    const query = {
       status: "OPEN",
       availableSeats: { $gt: 0 },
-    }).sort({ date: 1 });
+    };
 
-    // Log demand event (non-blocking)
-    logDemandEvent({ type: "search", user: req.user?.id || null, source: fromTrim, destination: toTrim }).catch(() => {});
+    if (fromPickupPointId || toPickupPointId) {
+      if (fromPickupPointId) {
+        const point = await PickupPoint.findById(fromPickupPointId);
+        if (!point) return res.status(400).json({ message: "Invalid from pickup point" });
+        query.sourceLocation = {
+          $nearSphere: {
+            $geometry: point.location,
+            $maxDistance: Number(radiusKm) * 1000,
+          },
+        };
+      }
+      if (toPickupPointId) {
+        const point = await PickupPoint.findById(toPickupPointId);
+        if (!point) return res.status(400).json({ message: "Invalid to pickup point" });
+        query.destinationLocation = {
+          $nearSphere: {
+            $geometry: point.location,
+            $maxDistance: Number(radiusKm) * 1000,
+          },
+        };
+      }
+    } else if (fromLat && fromLng && toLat && toLng) {
+      query.sourceLocation = {
+        $nearSphere: {
+          $geometry: { type: "Point", coordinates: [Number(fromLng), Number(fromLat)] },
+          $maxDistance: Number(radiusKm) * 1000,
+        },
+      };
+      query.destinationLocation = {
+        $nearSphere: {
+          $geometry: { type: "Point", coordinates: [Number(toLng), Number(toLat)] },
+          $maxDistance: Number(radiusKm) * 1000,
+        },
+      };
+    } else if (from && to) {
+      const escapeRegex = (str = "") => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      query.source = { $regex: `^${escapeRegex(from.trim())}$`, $options: "i" };
+      query.destination = { $regex: `^${escapeRegex(to.trim())}$`, $options: "i" };
+    } else {
+      return res.status(400).json({ message: "Provide from/to text or coordinates" });
+    }
 
-    // 🔹 Normalize response
-    const formattedRides = rides.map((ride) => ({
+    const ridesFromDb = await Ride.find(query).sort({ date: 1 });
+
+    const pickupLatNum = Number(req.query.pickupLat);
+    const pickupLngNum = Number(req.query.pickupLng);
+    const hasPickup = !Number.isNaN(pickupLatNum) && !Number.isNaN(pickupLngNum);
+
+    const filteredRides = ridesFromDb.filter((ride) => {
+      if (!hasPickup) return true;
+      const target = { lat: pickupLatNum, lng: pickupLngNum };
+      if (routeContainsPoint(ride.routePath, target, 500)) return true;
+      if (ride.sourceLocation?.coordinates?.length === 2) {
+        const [lng, lat] = ride.sourceLocation.coordinates;
+        if (haversineDistanceMeters({ lat, lng }, target) <= 1000) return true;
+      }
+      return false;
+    });
+
+    logDemandEvent({ type: "search", user: req.user?.id || null, source: from || null, destination: to || null }).catch(() => {});
+
+    const formattedRides = filteredRides.map((ride) => ({
       ...ride.toObject(),
       from: ride.source,
       to: ride.destination,
       passengers: ride.passengers.map((p) => p.toString()),
+      farePerPassenger: ride.farePerPassenger,
     }));
 
-    // 🔴 NO RIDES FOUND CASE
-    if (formattedRides.length === 0) {
-      return res.status(200).json({
-        rides: [],
-        message: "No rides found for this route",
-      });
-    }
-
-    // ✅ Rides found
-    return res.status(200).json({
-      rides: formattedRides,
-      message: "Rides found",
-    });
-
+    return res.status(200).json({ rides: formattedRides, message: "Rides found" });
   } catch (error) {
     console.error("Search rides error:", error);
-    return res.status(500).json({
-      message: "Server error while searching rides",
-    });
+    return res.status(500).json({ message: "Server error while searching rides" });
   }
 };
 
@@ -240,9 +331,22 @@ export const leaveRide = async (req, res) => {
       { new: true }
     );
 
+    if (!updatedRide) {
+      return res.status(400).json({ message: "Ride update failed" });
+    }
+
     if (updatedRide.status === "FULL") {
       updatedRide.status = "OPEN";
       await updatedRide.save();
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      io.to(rideId).emit("ride:updated", {
+        rideId: updatedRide._id.toString(),
+        availableSeats: updatedRide.availableSeats,
+        status: updatedRide.status,
+      });
     }
 
     res.status(200).json({
@@ -349,23 +453,21 @@ export const cancelRide = async (req, res) => {
     // 6️⃣ Remove PassengerLocation records for this ride
     await PassengerLocation.deleteMany({ ride: ride._id });
 
-    // 7️⃣ Emit cancellation to socket room
     const io = req.app.get("io");
     if (io) {
       io.to(rideId).emit("ride:cancelled", {
         rideId: ride._id.toString(),
         status: ride.status,
       });
-
-      // notify room that passenger locations cleared
+      io.to(rideId).emit("ride:updated", {
+        rideId: ride._id.toString(),
+        availableSeats: ride.availableSeats,
+        status: ride.status,
+      });
       io.to(rideId).emit("ride:passenger_locations_cleared", { rideId: ride._id.toString() });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Ride cancelled successfully",
-      ride,
-    });
+    return res.status(200).json({ success: true, message: "Ride cancelled successfully", ride });
 
   } catch (error) {
     console.error("Cancel ride error:", error);
@@ -403,12 +505,21 @@ export const updateDriverLocation = async (req, res) => {
     // broadcast via sockets if available
     const io = req.app.get("io");
     if (io) {
-      io.to(rideId).emit("ride:location", {
+      const driverPayload = {
         rideId: ride._id.toString(),
+        driverId: req.user.id,
         driverLocation: ride.driverLocation,
         driverLocationUpdatedAt: ride.driverLocationUpdatedAt,
         status: ride.status,
-      });
+        source: ride.source,
+        destination: ride.destination,
+        sourceLocation: ride.sourceLocation,
+        destinationLocation: ride.destinationLocation,
+        routePath: ride.routePath || [],
+      };
+      io.to(rideId).emit("ride:location", driverPayload);
+      io.emit("driverLocationUpdate", driverPayload);
+      io.emit("nearbyDrivers", driverPayload);
     }
 
     return res.status(200).json({
@@ -551,6 +662,68 @@ export const getRidePassengers = async (req, res) => {
     return res.status(200).json({ success: true, passengers: result });
   } catch (error) {
     console.error("getRidePassengers error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const completeRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const ride = await Ride.findById(rideId);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+    if (ride.driver.toString() !== req.user.id) return res.status(403).json({ message: "Only driver can complete ride" });
+    if (ride.status !== "OPEN" && ride.status !== "FULL") return res.status(400).json({ message: "Ride not in progress" });
+    ride.status = "CANCELLED";
+    await ride.save();
+    const io = req.app.get("io");
+    if (io) {
+      io.to(rideId).emit("ride:completed", { rideId, status: ride.status });
+      io.to(rideId).emit("ride:updated", { rideId, availableSeats: ride.availableSeats, status: ride.status });
+    }
+    return res.status(200).json({ success: true, message: "Ride marked complete" });
+  } catch (error) {
+    console.error("completeRide error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const reviewRide = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+    const { targetUserId, rating, comment } = req.body;
+
+    if (!targetUserId || !rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Invalid review data" });
+    }
+
+    const ride = await Ride.findById(rideId);
+    if (!ride) return res.status(404).json({ message: "Ride not found" });
+
+    const reviewerId = req.user.id;
+    let allowed = false;
+    if (req.user.role === "driver" && ride.driver.toString() === reviewerId && ride.passengers.some((p) => p.toString() === targetUserId)) {
+      allowed = true;
+    }
+    if (req.user.role === "passenger" && ride.passengers.some((p) => p.toString() === reviewerId) && ride.driver.toString() === targetUserId) {
+      allowed = true;
+    }
+    if (!allowed) return res.status(403).json({ message: "Not allowed to review this user" });
+
+    const existing = await Review.findOne({ ride: rideId, reviewer: reviewerId, targetUser: targetUserId });
+    if (existing) return res.status(400).json({ message: "You have already reviewed this user for this ride" });
+
+    const newReview = await Review.create({ ride: rideId, reviewer: reviewerId, targetUser: targetUserId, rating, comment: comment || "" });
+
+    const user = await User.findById(targetUserId);
+    if (user) {
+      user.numReviews = (user.numReviews || 0) + 1;
+      user.rating = Number(((user.rating * (user.numReviews - 1) + rating) / user.numReviews).toFixed(2));
+      await user.save();
+    }
+
+    res.status(201).json({ success: true, review: newReview });
+  } catch (error) {
+    console.error("reviewRide error:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };

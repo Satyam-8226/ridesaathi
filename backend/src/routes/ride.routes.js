@@ -11,6 +11,8 @@ import {
   getLiveRide,
   updatePassengerLocation,
   getRidePassengers,
+  completeRide,
+  reviewRide,
 } from "../controllers/ride.controller.js";
 
 import { protect } from "../middlewares/auth.middleware.js";
@@ -46,6 +48,12 @@ router.get("/my-rides/driver", protect, getMyDriverRides);
 
 // Get my rides as passenger
 router.get("/my-rides/passenger", protect, getMyPassengerRides);
+
+// Complete ride (driver)
+router.post("/:rideId/complete", protect, completeRide);
+
+// Review user after ride
+router.post("/:rideId/review", protect, reviewRide);
 
 // Cancel ride (driver)
 router.post("/:rideId/cancel", protect, cancelRide);

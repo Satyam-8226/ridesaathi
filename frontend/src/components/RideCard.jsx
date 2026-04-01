@@ -73,11 +73,28 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
       }
     };
 
+    const onUpdated = (payload) => {
+      if (payload?.rideId !== ride._id) return;
+      if (typeof payload.availableSeats === "number") {
+        setLocalSeats(payload.availableSeats);
+      }
+      if (payload.status) {
+        if (payload.status === "CANCELLED") {
+          toast.error("This ride was cancelled");
+        }
+      }
+      if (payload.availableSeats <= 1 && payload.availableSeats > 0) {
+        toast("Ride is almost full", { icon: "⚠️" });
+      }
+    };
+
     socket.on("ride:location", onLocation);
+    socket.on("ride:updated", onUpdated);
 
     return () => {
       socket.emit("leaveRoom", ride._id);
       socket.off("ride:location", onLocation);
+      socket.off("ride:updated", onUpdated);
     };
   }, [ride._id]);
 
@@ -113,9 +130,7 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
   };
 
   const cancelRide = async () => {
-    if (!window.confirm("Cancel this ride? All passengers will be removed."))
-      return;
-
+    if (!window.confirm("Cancel this ride? All passengers will be removed.")) return;
     try {
       setLoading(true);
       await API.post(`/rides/${ride._id}/cancel`);
@@ -128,11 +143,38 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
     }
   };
 
+  const completeRide = async () => {
+    if (!window.confirm("Mark this ride complete?")) return;
+    try {
+      setLoading(true);
+      await API.post(`/rides/${ride._id}/complete`);
+      toast.success("Ride marked complete");
+      refresh();
+    } catch {
+      toast.error("Failed to complete ride");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rateDriver = async () => {
+    const rating = Number(window.prompt("Rate driver (1-5):"));
+    if (!rating || rating < 1 || rating > 5) return toast.error("Invalid rating");
+    try {
+      setLoading(true);
+      await API.post(`/rides/${ride._id}/review`, { targetUserId: ride.driver, rating, comment: "Nice ride" });
+      toast.success("Driver rated successfully");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to submit review");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /* ===============================
      Geolocation helpers
   ================================ */
   const geoError = (e) => {
-    console.error("geo error", e);
     if (e.code === 1) toast.error("Location permission denied");
     else if (e.code === 2) toast.error("Location unavailable");
     else if (e.code === 3)
@@ -272,17 +314,9 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
 
         {user.role === "driver" && isOpen && (
           <>
-            <button
-              onClick={cancelRide}
-              disabled={loading}
-              className="btn btn-danger"
-            >
-              Cancel Ride
-            </button>
-            <button
-              onClick={toggleSharing}
-              className={`btn ${sharing ? "btn-ghost" : "btn-primary"}`}
-            >
+            <button onClick={completeRide} disabled={loading} className="btn btn-success">Complete Ride</button>
+            <button onClick={cancelRide} disabled={loading} className="btn btn-danger">Cancel Ride</button>
+            <button onClick={toggleSharing} className={`btn ${sharing ? "btn-ghost" : "btn-primary"}`}>
               {sharing ? "Stop Sharing" : "Share Location"}
             </button>
           </>
@@ -298,12 +332,12 @@ const RideCard = ({ ride, refresh, context = "search" }) => {
         )}
 
         {user.role === "passenger" && joined && (
-          <button
-            onClick={togglePassengerSharing}
-            className={`btn ${passengerSharing ? "btn-ghost" : "btn-primary"}`}
-          >
-            {passengerSharing ? "Stop sharing" : "Share my location"}
-          </button>
+          <>
+            <button onClick={rateDriver} className="btn btn-primary">Rate Driver</button>
+            <button onClick={togglePassengerSharing} className={`btn ${passengerSharing ? "btn-ghost" : "btn-primary"}`}>
+              {passengerSharing ? "Stop sharing" : "Share my location"}
+            </button>
+          </>
         )}
       </div>
 

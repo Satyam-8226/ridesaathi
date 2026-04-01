@@ -18,7 +18,7 @@ export default function TrackModal({ rideId, onClose }) {
       setLoading(false);
     };
 
-    const onCancelled = (payload) => {
+    const onCancelled = () => {
       setStatus("CANCELLED");
       setLoading(false);
     };
@@ -42,7 +42,6 @@ export default function TrackModal({ rideId, onClose }) {
     if (!loc || loc.lat == null) return null;
     const lat = loc.lat;
     const lon = loc.lng;
-    const zoom = 14;
     const pad = 0.012;
     const bbox = `${lon - pad},${lat - pad},${lon + pad},${lat + pad}`;
     return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lon}`;

@@ -15,7 +15,6 @@ export function getSocket() {
   socket = io(base, {
     autoConnect: false,
     withCredentials: true,
-    // ❌ DO NOT force transports
   });
 
   const token = localStorage.getItem("token");
@@ -31,6 +30,7 @@ export function getSocket() {
     socket.connect();
   }
 
+  window.socket = socket;
   return socket;
 }
 

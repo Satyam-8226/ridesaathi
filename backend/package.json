@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "build": "npm install",
+    "test": "node --experimental-vm-modules --experimental-test-runner src/**/*.test.js"
   },
   "author": "Satyam",
   "license": "ISC",
@@ -15,6 +17,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.2",
     "node-fetch": "^3.3.2",

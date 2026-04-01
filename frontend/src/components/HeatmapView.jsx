@@ -44,8 +44,8 @@ export default function HeatmapView({ start, end, precision }) {
           const bounds = L.latLngBounds(latlngs);
           if (bounds.isValid()) mapRef.current.fitBounds(bounds.pad(0.4));
         }
-      } catch (err) {
-        console.error("load heat error", err);
+      } catch {
+        // Heatmap load failed; retry later
       }
     };
 
