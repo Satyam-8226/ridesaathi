@@ -20,7 +20,6 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.0.2",
-    "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.12",
     "socket.io": "^4.8.3",
     "twilio": "^4.23.0"

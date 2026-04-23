@@ -1,11 +1,12 @@
 import PickupPoint from "../models/PickupPoint.js";
+import logger from "../utils/logger.js";
 
 export const getPickupPoints = async (req, res) => {
   try {
     const points = await PickupPoint.find().sort({ city: 1, name: 1 });
     return res.status(200).json({ success: true, pickupPoints: points });
   } catch (error) {
-    console.error("getPickupPoints error:", error);
+    logger.error("getPickupPoints error", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -29,7 +30,7 @@ export const createPickupPoint = async (req, res) => {
     });
     return res.status(201).json({ success: true, pickupPoint: point });
   } catch (error) {
-    console.error("createPickupPoint error:", error);
+    logger.error("createPickupPoint error", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

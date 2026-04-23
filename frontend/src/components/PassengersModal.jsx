@@ -37,7 +37,7 @@ export default function PassengersModal({ rideId, onClose }) {
           }
         }
       } catch {
-        // noop
+        // Non-critical error fetching data
       } finally {
         if (mounted) setLoading(false);
       }

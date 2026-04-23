@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import Otp from "../models/Otp.js";
 import { sendOtp } from "../utils/mailer.js";
+import logger from "../utils/logger.js";
 
 /* ===============================
    Generate JWT Token
@@ -77,7 +78,7 @@ export const registerUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Register error:", error);
+    logger.error("Register error", error);
     return res.status(500).json({
       success: false,
       message: "Server error during registration",
@@ -139,7 +140,7 @@ export const loginUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Login error:", error);
+    logger.error("Login error", error);
     return res.status(500).json({
       success: false,
       message: "Server error during login",
@@ -160,7 +161,7 @@ export const getMe = async (req, res) => {
       role: req.user.role,
     });
   } catch (error) {
-    console.error("GetMe error:", error);
+    logger.error("GetMe error", error);
     return res.status(500).json({
       message: "Server error",
     });
@@ -215,13 +216,13 @@ export const requestOtp = async (req, res) => {
     try {
       await sendOtp({ contact, type, otp });
     } catch (err) {
-      console.error("SendOtp error:", err.message);
+      logger.error("SendOtp error", err);
       return res.status(500).json({ success: false, message: "Failed to send OTP" });
     }
 
     return res.status(200).json({ success: true, message: "OTP sent" });
   } catch (error) {
-    console.error("requestOtp error:", error);
+    logger.error("requestOtp error", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };

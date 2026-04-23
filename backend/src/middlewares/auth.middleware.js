@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import logger from "../utils/logger.js";
 
 export const protect = async (req, res, next) => {
   try {
@@ -50,7 +51,7 @@ export const protect = async (req, res, next) => {
         .json({ success: false, message: "Not authorized, token invalid or expired" });
     }
 
-    console.error("Auth middleware error:", error.message);
+    logger.error("Auth middleware error", error);
     return res
       .status(401)
       .json({ success: false, message: "Not authorized, token invalid or expired" });

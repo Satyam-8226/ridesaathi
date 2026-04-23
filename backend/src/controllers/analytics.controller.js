@@ -1,4 +1,5 @@
 import DemandEvent from "../models/DemandEvent.js";
+import logger from "../utils/logger.js";
 
 /*
   Simple geocode helper using Nominatim. Returns { lat, lon } or null.
@@ -67,7 +68,7 @@ export const getDemandHeat = async (req, res) => {
 
     return res.status(200).json({ success: true, points: results });
   } catch (error) {
-    console.error("getDemandHeat error:", error);
+    logger.error("getDemandHeat error", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -105,7 +106,7 @@ export const getHotspots = async (req, res) => {
     const hotspots = await DemandEvent.aggregate(pipeline);
     return res.status(200).json({ success: true, hotspots });
   } catch (error) {
-    console.error("getHotspots error:", error);
+    logger.error("getHotspots error", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -132,6 +133,6 @@ export const logDemandEvent = async ({ type, ride = null, user = null, source = 
     });
   } catch (err) {
     // non-fatal logging error
-    console.error("logDemandEvent err:", err?.message || err);
+    logger.error("logDemandEvent err", err);
   }
 };

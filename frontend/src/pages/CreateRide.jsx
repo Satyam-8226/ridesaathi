@@ -29,7 +29,7 @@ const CreateRide = () => {
         const res = await API.get("/pickup-points");
         setPickupPoints(res.data.pickupPoints || []);
       } catch {
-        // ignore
+        // Non-critical error loading pickup points
       }
     };
     loadPickupPoints();

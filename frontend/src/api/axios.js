@@ -50,11 +50,6 @@ API.interceptors.response.use(
       // Clear token on auth failure
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      
-      // Optionally redirect to login
-      if (window.location.pathname !== "/login") {
-        // window.location.href = "/login";
-      }
     }
 
     // Handle network errors

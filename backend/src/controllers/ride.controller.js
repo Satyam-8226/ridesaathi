@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import PickupPoint from "../models/PickupPoint.js";
 import Review from "../models/Review.js";
 import { logDemandEvent } from "./analytics.controller.js";
+import logger from "../utils/logger.js";
 
 // Utility functions for route-based matching
 const toRad = (deg) => (deg * Math.PI) / 180;
@@ -122,7 +123,7 @@ export const createRide = async (req, res) => {
 
     return res.status(201).json({ success: true, message: "Ride created successfully", ride });
   } catch (error) {
-    console.error("Create ride error:", error.message);
+    logger.error("Create ride error", error);
     return res.status(500).json({ success: false, message: error.message || "Server error while creating ride" });
   }
 };
@@ -177,7 +178,7 @@ export const joinRide = async (req, res) => {
       const lng = rideObj?.driverLocation?.lng ?? null;
       logDemandEvent({ type: "join", ride: rideId, user: req.user.id, source: rideObj?.source || null, lat, lng }).catch(() => {});
     } catch (e) {
-      // ignore
+      // Non-critical logging error
     }
 
     res.status(200).json({
@@ -188,7 +189,7 @@ export const joinRide = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Join ride error", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -288,7 +289,7 @@ export const searchRides = async (req, res) => {
 
     return res.status(200).json({ rides: formattedRides, message: "Rides found" });
   } catch (error) {
-    console.error("Search rides error:", error);
+    logger.error("Search rides error", error);
     return res.status(500).json({ message: "Server error while searching rides" });
   }
 };
@@ -357,7 +358,7 @@ export const leaveRide = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    logger.error("Leave ride error", error);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -470,7 +471,7 @@ export const cancelRide = async (req, res) => {
     return res.status(200).json({ success: true, message: "Ride cancelled successfully", ride });
 
   } catch (error) {
-    console.error("Cancel ride error:", error);
+    logger.error("Cancel ride error", error);
     return res.status(500).json({
       message: "Server error",
     });
@@ -529,7 +530,7 @@ export const updateDriverLocation = async (req, res) => {
       driverLocationUpdatedAt: ride.driverLocationUpdatedAt,
     });
   } catch (error) {
-    console.error("Update driver location error:", error);
+    logger.error("Update driver location error", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -568,7 +569,7 @@ export const getLiveRide = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get live ride error:", error);
+    logger.error("reviewRide error", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -618,7 +619,7 @@ export const updatePassengerLocation = async (req, res) => {
 
     return res.status(200).json({ success: true, message: "Location updated" });
   } catch (error) {
-    console.error("updatePassengerLocation error:", error);
+    logger.error("updatePassengerLocation error", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -661,7 +662,7 @@ export const getRidePassengers = async (req, res) => {
 
     return res.status(200).json({ success: true, passengers: result });
   } catch (error) {
-    console.error("getRidePassengers error:", error);
+    logger.error("getRidePassengers error", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -682,7 +683,7 @@ export const completeRide = async (req, res) => {
     }
     return res.status(200).json({ success: true, message: "Ride marked complete" });
   } catch (error) {
-    console.error("completeRide error:", error);
+    logger.error("completeRide error", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -723,7 +724,7 @@ export const reviewRide = async (req, res) => {
 
     res.status(201).json({ success: true, review: newReview });
   } catch (error) {
-    console.error("reviewRide error:", error);
+    logger.error("reviewRide error", error);
     return res.status(500).json({ message: "Server error" });
   }
 };

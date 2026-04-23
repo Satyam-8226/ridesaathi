@@ -5,7 +5,6 @@ import { errorHandler, notFoundHandler } from "./middlewares/errorHandler.js";
 import securityHeaders from "./middlewares/security.js";
 import config from "./config/environment.js";
 import authRoutes from "./routes/auth.routes.js";
-import userRoutes from "./routes/user.routes.js";
 import rideRoutes from "./routes/ride.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import pickupRoutes from "./routes/pickup.routes.js";
@@ -82,7 +81,6 @@ app.get("/health", (req, res) => {
 ================================ */
 
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
 app.use("/api/rides", rideRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/pickup-points", pickupRoutes);
